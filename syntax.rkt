@@ -19,14 +19,15 @@
 <prim> ::= + | - | * | / | >= | <= | > | < | = | and | or | not
 
 <label> ::= symbol
+
 =============
 
 <type> ::= int | bool | symbol
          | (-> <type> <type>)
          | (int <predicate>) | (bool <predicate>) | (symbol <predicate>)
 
-<predicate> ::= #t | (<type-op> <operand> <operand>)
-<type-op> ::= > | < | = | >= | <= | and | or | not
+<predicate> ::= #t | (<pred-op> <operand> <operand>)
+<pred-op> ::= > | < | = | >= | <= | and | or | not
 <operand> ::= <predicate> | <literal> | <var>
 
 |#
