@@ -15,10 +15,10 @@
        |  (let ([<var> : <type>] <exp>) <body>)
        |  (<exp> <exp>)
 
-<literal> ::= int | bool | symbol
+<literal> ::= <int> | <bool> | <symbol>
 <prim> ::= + | - | * | / | >= | <= | > | < | = | and | or | not
 
-<label> ::= symbol
+<label> ::= <symbol>
 
 =============
 
