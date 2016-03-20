@@ -4,7 +4,7 @@
 
 <top> ::= <def>* <exp>*
 
-<def> ::= (define [<var> : <type>] <exp>)
+<def> ::= (define [<var> : <type>] : <type> <exp>)
 
 <exp> ::= <var>
        |  <literal>
