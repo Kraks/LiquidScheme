@@ -19,7 +19,8 @@ User Syntax
        |  (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
-<prim> ::= + | - | * | / | >= | <= | > | < | = | and | or | not
+<prim> ::= + | - | * | / | >= | <= | > | < | = | !=
+        |  and | or | not
 
 <label> ::= <symbol>
 
@@ -30,7 +31,7 @@ User Syntax
          | (Int <predicate>) | (Bool <predicate>) | (Any #t)
 
 <predicate> ::= #t | (<pred-op> <operand> <operand>)
-<pred-op> ::= > | < | = | >= | <= | and | or | not
+<pred-op> ::= > | < | = | >= | <= | != | and | or | not
 <operand> ::= <predicate> | <literal> | _
 
 |#
@@ -49,7 +50,8 @@ Core Syntax
        |  (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
-<prim> ::= + | - | * | / | >= | <= | > | < | = | and | or | not
+<prim> ::= + | - | * | / | >= | <= | > | < | = | !=
+        |  and | or | not
 
 <label> ::= <symbol>
 
@@ -58,7 +60,7 @@ Core Syntax
 <type> ::= (-> <type> <type>)
          | (Int <predicate>) | (Bool <predicate>) | (Any #t)
 <predicate> ::= #t | (<pred-op> <operand> <operand>)
-<pred-op> ::= > | < | = | >= | <= | and | or | not
+<pred-op> ::= > | < | = | >= | <= | != | and | or | not
 <operand> ::= <predicate> | <literal> | _
 
 |#
@@ -79,6 +81,30 @@ Core Syntax
     [`(let ((,var : ,type ,exp)) ,body)
      ;=>
      `((lambda ,(gensym 'let) [,var : ,(desugar-type type)] : (Any #t) ,body) ,(desugar exp))]
+    [`(+ ,e1 ,e2)
+     `(+ ,(desugar e1) ,(desugar e2))]
+    [`(- ,e1 ,e2)
+     `(- ,(desugar e1) ,(desugar e2))]
+    [`(* ,e1 ,e2)
+     `(* ,(desugar e1) ,(desugar e2))]
+    [`(/ ,e1 ,e2)
+     `(/ ,(desugar e1) ,(desugar e2))]
+    [`(> ,e1 ,e2)
+     `(> ,(desugar e1) ,(desugar e2))]
+    [`(>= ,e1 ,e2)
+     `(>= ,(desugar e1) ,(desugar e2))]
+    [`(< ,e1 ,e2)
+     `(< ,(desugar e1) ,(desugar e2))]
+    [`(<= ,e1 ,e2)
+     `(<= ,(desugar e1) ,(desugar e2))]
+    [`(!= ,e1 ,e2)
+     `(!= ,(desugar e1) ,(desugar e2))]
+    [`(and ,e1 ,e2)
+     `(and ,(desugar e1) ,(desugar e2))]
+    [`(or ,e1 ,e2)
+     `(or ,(desugar e1) ,(desugar e2))]
+    [`(not ,e)
+     `(not ,(desugar e))]
     [`(,rator ,rand)
      ;=>
      `(,(desugar rator) ,(desugar rand))]
