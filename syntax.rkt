@@ -60,7 +60,7 @@ Core Syntax
 <type> ::= (-> <type> <type>)
          | (Int <predicate>) | (Bool <predicate>) | (Any #t)
 <predicate> ::= #t | (<pred-op> <operand> <operand>)
-<pred-op> ::= > | < | = | >= | <= | != | and | or | not
+<pred-op> ::= >= | > | = | and | or | not
 <operand> ::= <predicate> | <literal> | _
 
 |#
@@ -69,7 +69,7 @@ Core Syntax
 ; TODO adding Any type?
 ; TODO type of let body?
 ; TODO do we really need (quote ...)?
-; TODO reduce pred-op
+; TODO reduce pred-op, recursively?
 ; TODO do we really need all arith operators?
 ; TODO boolean predicate
 
@@ -131,9 +131,21 @@ Core Syntax
     ['Int '(Int #t)]
     ['Bool '(Bool #t)]
     ['Any '(Any #t)]
+    [`(Int ,pred) `(Int ,(desugar-pred pred))]
+    [`(Bool ,pred) `(Int ,(desugar-pred pred))]
     [`(,atype -> ,rtype)
      `(,(desugar-type atype) -> ,(desugar-type rtype))]
     [t t]))
+
+(define (desugar-pred pred)
+  (match pred
+    [`(<= ,e1 ,e2) `(>= ,e2 ,e1)]
+    [`(< ,e1 ,e2)  `(>  ,e2 ,e1)]
+    [`(!= ,e1 ,e2) `(not (= ,e1 ,e2))]
+    [`(and ,e1 ,e2) `(and ,(desugar-pred e1) ,(desugar-pred e2))]
+    [`(or ,e1 ,e2)  `(or ,(desugar-pred e1) ,(desugar-pred e2))]
+    [`(not ,e) `(not ,(desugar-pred e))]
+    [e e]))
 
 ;============
 
