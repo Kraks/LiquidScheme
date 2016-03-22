@@ -8,19 +8,19 @@ Language Syntax
 <top> ::= <def>* <exp>*
 
 <def> ::= (define <var> : <type> <exp>)
-       |  (define (<name> [<var> : <type>]) : <type> <exp>)
+        | (define (<name> [<var> : <type>]) : <type> <exp>)
 
 <exp> ::= <var>
-       |  <literal>
-       |  <prim>
-       |  (λ <label> [<var> : <type>] : <type> <exp>)
-       |  (if <exp> <exp> <exp>)
-       |  (let ((<var> : <type> <exp>)) <body>)
-       |  (<exp> <exp>)
+        | <literal>
+        | <prim>
+        | (λ <label> [<var> : <type>] : <type> <exp>)
+        | (if <exp> <exp> <exp>)
+        | (let ((<var> : <type> <exp>)) <body>)
+        | (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
 <prim> ::= + | - | * | / | >= | <= | > | < | = | !=
-        |  and | or | not
+         | and | or | not
 
 <label> ::= <symbol>
 
@@ -31,7 +31,9 @@ Language Syntax
          | (Int <predicate>) | (Bool <predicate>) | (Any #t)
 
 <predicate> ::= #t | (<pred-op> <operand> <operand>)
-<pred-op> ::= > | < | = | >= | <= | != | and | or | not
+
+<pred-op> ::= > | < | = | >= | <= | !=
+            | and | or | not
 <operand> ::= <predicate> | <literal> | _
 
 |#
@@ -40,18 +42,20 @@ Language Syntax
 Core Syntax
 
 <top> ::= <def>* <exp>*
+
 <def> ::= (define (<name> [<var> : <type>]) : <type> <exp>)
 
 <exp> ::= <var>
-       |  <literal>
-       |  <prim>
-       |  (λ <label> [<var> : <type>] : <type> <exp>)
-       |  (if <exp> <exp> <exp>)
-       |  (<exp> <exp>)
+        | <literal>
+        | <prim>
+        | (λ <label> [<var> : <type>] : <type> <exp>)
+        | (if <exp> <exp> <exp>)
+        | (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
+
 <prim> ::= + | - | * | / | >= | > | =
-        |  and | or | not
+         | and | or | not
 
 <label> ::= <symbol>
 
@@ -59,8 +63,12 @@ Core Syntax
 
 <type> ::= (-> <type> <type>)
          | (Int <predicate>) | (Bool <predicate>) | (Any #t)
+
 <predicate> ::= #t | (<pred-op> <operand> <operand>)
-<pred-op> ::= >= | > | = | and | or | not
+
+<pred-op> ::= >= | > | =
+            | and | or | not
+
 <operand> ::= <predicate> | <literal> | _
 
 |#
@@ -132,7 +140,7 @@ Core Syntax
     ['Bool '(Bool #t)]
     ['Any '(Any #t)]
     [`(Int ,pred) `(Int ,(desugar-pred pred))]
-    [`(Bool ,pred) `(Int ,(desugar-pred pred))]
+    [`(Bool ,pred) `(Bool ,(desugar-pred pred))]
     [`(,atype -> ,rtype)
      `(,(desugar-type atype) -> ,(desugar-type rtype))]
     [t t]))
