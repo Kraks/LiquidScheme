@@ -50,7 +50,7 @@ Core Syntax
        |  (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
-<prim> ::= + | - | * | / | >= | > | = | !=
+<prim> ::= + | - | * | / | >= | > | =
         |  and | or | not
 
 <label> ::= <symbol>
@@ -111,7 +111,7 @@ Core Syntax
     [`(<= ,e1 ,e2)
      `(>= ,(desugar e2) ,(desugar e1))]
     [`(!= ,e1 ,e2)
-     `(!= ,(desugar e1) ,(desugar e2))]
+     `(not (= ,(desugar e1) ,(desugar e2)))]
     [`(= ,e1 ,e2)
      `(= ,(desugar e1) ,(desugar e2))]
     ; Logical operators
