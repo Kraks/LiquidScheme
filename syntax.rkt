@@ -70,25 +70,29 @@ Core Syntax
 ; TODO type of let body?
 ; TODO do we really need (quote ...)?
 ; TODO reduce pred-op
-; TODO if
+; TODO do we really need all arith operators?
 
 (define (desugar expr)
   (match expr
+    ; Define a lambda
     [`(define (,name [,var : ,atype]) : ,rtype ,exp)
-     ;=>
      `(define ,name : (,(desugar-type atype) -> ,(desugar-type rtype))
         (lambda ,name [,var : ,(desugar-type atype)] : ,(desugar-type rtype) ,(desugar exp)))]
+    ; Define a variable
     [`(define ,name : ,type ,exp)
-     ;=>
      `(define ,name : ,(desugar-type type) ,(desugar exp))]
+    ; If expression
     [`(if ,cnd ,thn ,els)
      `(if ,(desugar cnd) ,(desugar thn) ,(desugar els))]
+    ; Lambda
     [`(lambda ,label [,var : ,atype] : ,rtype ,body)
-     ;=>
      `(lambda ,label [,var : ,(desugar-type atype)] : ,(desugar-type rtype) ,(desugar body))]
+    ; Let expression
     [`(let ((,var : ,type ,exp)) ,body)
-     ;=>
-     `((lambda ,(gensym 'let) [,var : ,(desugar-type type)] : (Any #t) ,(desugar body)) ,(desugar exp))]
+     `((lambda ,(gensym 'let) [,var : ,(desugar-type type)] : (Any #t)
+         ,(desugar body))
+       ,(desugar exp))]
+    ; Arithmetic operators
     [`(+ ,e1 ,e2)
      `(+ ,(desugar e1) ,(desugar e2))]
     [`(- ,e1 ,e2)
@@ -109,12 +113,14 @@ Core Syntax
      `(!= ,(desugar e1) ,(desugar e2))]
     [`(= ,e1 ,e2)
      `(= ,(desugar e1) ,(desugar e2))]
+    ; Logical operators
     [`(and ,e1 ,e2)
      `(and ,(desugar e1) ,(desugar e2))]
     [`(or ,e1 ,e2)
      `(or ,(desugar e1) ,(desugar e2))]
     [`(not ,e)
      `(not ,(desugar e))]
+    ; Function application
     [`(,rator ,rand)
      `(,(desugar rator) ,(desugar rand))]
     [e e]))
