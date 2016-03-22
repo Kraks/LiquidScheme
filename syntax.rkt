@@ -65,6 +65,7 @@ Core Syntax
 
 |#
 
+; TODO redundant type info in definition
 ; TODO adding Any type?
 ; TODO type of let body?
 ; TODO do we really need (quote ...)?
@@ -78,9 +79,12 @@ Core Syntax
     [`(define ,name : ,type ,exp)
      ;=>
      `(define ,name : ,(desugar-type type) ,(desugar exp))]
+    [`(lambda ,label [,var : ,atype] : ,rtype ,body)
+     ;=>
+     `(lambda ,label [,var : ,(desugar-type atype)] : ,(desugar-type rtype) ,(desugar body))]
     [`(let ((,var : ,type ,exp)) ,body)
      ;=>
-     `((lambda ,(gensym 'let) [,var : ,(desugar-type type)] : (Any #t) ,body) ,(desugar exp))]
+     `((lambda ,(gensym 'let) [,var : ,(desugar-type type)] : (Any #t) ,(desugar body)) ,(desugar exp))]
     [`(+ ,e1 ,e2)
      `(+ ,(desugar e1) ,(desugar e2))]
     [`(- ,e1 ,e2)
@@ -106,7 +110,6 @@ Core Syntax
     [`(not ,e)
      `(not ,(desugar e))]
     [`(,rator ,rand)
-     ;=>
      `(,(desugar rator) ,(desugar rand))]
     [e e]))
 
@@ -119,6 +122,7 @@ Core Syntax
      `(,(desugar-type atype) -> ,(desugar-type rtype))]
     [t t]))
 
+;============
 
 (module+ test
   (check-equal? (desugar-type 'Int) '(Int #t))
@@ -135,4 +139,9 @@ Core Syntax
                 '(define add1 : ((Int #t) -> (Int #t)) (lambda add1 [x : (Int #t)] : (Int #t) (+ x 1))))
   (check-match (desugar '(let ((x : Int 3)) (+ x 1)))
                `((lambda ,sym (x : (Int #t)) : (Any #t) (+ x 1)) 3))
+  (check-equal? (desugar '(define (f [x : Any]) : (Any -> Any) (lambda whatever [y : Any] : Any x)))
+              '(define f : ((Any #t) -> ((Any #t) -> (Any #t)))
+                 (lambda f (x : (Any #t)) : ((Any #t) -> (Any #t))
+                   (lambda whatever (y : (Any #t)) : (Any #t) x))))
   )
+
