@@ -71,6 +71,7 @@ Core Syntax
 ; TODO do we really need (quote ...)?
 ; TODO reduce pred-op
 ; TODO do we really need all arith operators?
+; TODO boolean predicate
 
 (define (desugar expr)
   (match expr
