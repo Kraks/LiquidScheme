@@ -3,7 +3,7 @@
 (require rackunit)
 
 #|
-User Syntax
+Language Syntax
 
 <top> ::= <def>* <exp>*
 
@@ -50,7 +50,7 @@ Core Syntax
        |  (<exp> <exp>)
 
 <literal> ::= <int> | <bool>
-<prim> ::= + | - | * | / | >= | <= | > | < | = | !=
+<prim> ::= + | - | * | / | >= | > | = | !=
         |  and | or | not
 
 <label> ::= <symbol>
@@ -69,6 +69,8 @@ Core Syntax
 ; TODO adding Any type?
 ; TODO type of let body?
 ; TODO do we really need (quote ...)?
+; TODO reduce pred-op
+; TODO if
 
 (define (desugar expr)
   (match expr
@@ -79,6 +81,8 @@ Core Syntax
     [`(define ,name : ,type ,exp)
      ;=>
      `(define ,name : ,(desugar-type type) ,(desugar exp))]
+    [`(if ,cnd ,thn ,els)
+     `(if ,(desugar cnd) ,(desugar thn) ,(desugar els))]
     [`(lambda ,label [,var : ,atype] : ,rtype ,body)
      ;=>
      `(lambda ,label [,var : ,(desugar-type atype)] : ,(desugar-type rtype) ,(desugar body))]
@@ -98,11 +102,13 @@ Core Syntax
     [`(>= ,e1 ,e2)
      `(>= ,(desugar e1) ,(desugar e2))]
     [`(< ,e1 ,e2)
-     `(< ,(desugar e1) ,(desugar e2))]
+     `(> ,(desugar e2) ,(desugar e1))]
     [`(<= ,e1 ,e2)
-     `(<= ,(desugar e1) ,(desugar e2))]
+     `(>= ,(desugar e2) ,(desugar e1))]
     [`(!= ,e1 ,e2)
      `(!= ,(desugar e1) ,(desugar e2))]
+    [`(= ,e1 ,e2)
+     `(= ,(desugar e1) ,(desugar e2))]
     [`(and ,e1 ,e2)
      `(and ,(desugar e1) ,(desugar e2))]
     [`(or ,e1 ,e2)
