@@ -34,7 +34,7 @@ Language Syntax
 
 <pred-op> ::= > | < | = | >= | <= | !=
             | and | or | not
-<operand> ::= <predicate> | <literal> | _
+<operand> ::= <predicate> | <literal> | _ | <var>
 
 |#
 
@@ -69,7 +69,7 @@ Core Syntax
 <pred-op> ::= >= | > | =
             | and | or | not
 
-<operand> ::= <predicate> | <literal> | _
+<operand> ::= <predicate> | <literal> | _ | <var>
 
 |#
 
@@ -102,36 +102,22 @@ Core Syntax
          ,(desugar body))
        ,(desugar exp))]
     ; Arithmetic operators
-    [`(+ ,e1 ,e2)
-     `(+ ,(desugar e1) ,(desugar e2))]
-    [`(- ,e1 ,e2)
-     `(- ,(desugar e1) ,(desugar e2))]
-    [`(* ,e1 ,e2)
-     `(* ,(desugar e1) ,(desugar e2))]
-    [`(/ ,e1 ,e2)
-     `(/ ,(desugar e1) ,(desugar e2))]
-    [`(> ,e1 ,e2)
-     `(> ,(desugar e1) ,(desugar e2))]
-    [`(>= ,e1 ,e2)
-     `(>= ,(desugar e1) ,(desugar e2))]
-    [`(< ,e1 ,e2)
-     `(> ,(desugar e2) ,(desugar e1))]
-    [`(<= ,e1 ,e2)
-     `(>= ,(desugar e2) ,(desugar e1))]
-    [`(!= ,e1 ,e2)
-     `(not (= ,(desugar e1) ,(desugar e2)))]
-    [`(= ,e1 ,e2)
-     `(= ,(desugar e1) ,(desugar e2))]
+    [`(+ ,e1 ,e2) `(+ ,(desugar e1) ,(desugar e2))]
+    [`(- ,e1 ,e2) `(- ,(desugar e1) ,(desugar e2))]
+    [`(* ,e1 ,e2) `(* ,(desugar e1) ,(desugar e2))]
+    [`(/ ,e1 ,e2) `(/ ,(desugar e1) ,(desugar e2))]
+    [`(> ,e1 ,e2) `(> ,(desugar e1) ,(desugar e2))]
+    [`(>= ,e1 ,e2) `(>= ,(desugar e1) ,(desugar e2))]
+    [`(< ,e1 ,e2) `(> ,(desugar e2) ,(desugar e1))]
+    [`(<= ,e1 ,e2) `(>= ,(desugar e2) ,(desugar e1))]
+    [`(!= ,e1 ,e2) `(not (= ,(desugar e1) ,(desugar e2)))]
+    [`(= ,e1 ,e2) `(= ,(desugar e1) ,(desugar e2))]
     ; Logical operators
-    [`(and ,e1 ,e2)
-     `(and ,(desugar e1) ,(desugar e2))]
-    [`(or ,e1 ,e2)
-     `(or ,(desugar e1) ,(desugar e2))]
-    [`(not ,e)
-     `(not ,(desugar e))]
+    [`(and ,e1 ,e2) `(and ,(desugar e1) ,(desugar e2))]
+    [`(or ,e1 ,e2) `(or ,(desugar e1) ,(desugar e2))]
+    [`(not ,e) `(not ,(desugar e))]
     ; Function application
-    [`(,rator ,rand)
-     `(,(desugar rator) ,(desugar rand))]
+    [`(,rator ,rand) `(,(desugar rator) ,(desugar rand))]
     [e e]))
 
 (define (desugar-type type)
@@ -177,4 +163,3 @@ Core Syntax
                  (lambda f (x : (Any #t)) : ((Any #t) -> (Any #t))
                    (lambda whatever (y : (Any #t)) : (Any #t) x))))
   )
-
