@@ -84,8 +84,12 @@
         [else (search f (set-add seen (first todo))
                       (append (f (first todo)) (cdr todo)))]))
 
+(define (sort-state-set states)
+  (sort (set->list states) < #:key State-time))
+
+; exp -> [state]
 (define (aval e)
-  (explore step (inject e)))
+  (sort-state-set (explore step (inject e))))
 
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
@@ -100,12 +104,9 @@
     [(? symbol?) (Var exp)]
     [`(lambda (,var) ,body) (Lam var (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
-
-(define (sort-state-set states)
-  (sort (set->list states) < #:key State-time))
     
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
-(sort-state-set (aval (parse '{{lambda {x} x} {lambda {y} y}})))
+(aval (parse '{{lambda {x} x} {lambda {y} y}}))
 (aval (parse '{lambda {x} x}))
