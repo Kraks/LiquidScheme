@@ -18,6 +18,7 @@
 ; Env : var -> addr
 
 ; lookup-env env var
+; TODO
 (define lookup-env hash-ref)
 ; ext-env env var addr
 (define ext-env hash-set)
@@ -26,6 +27,7 @@
 ; Store : addr -> Set(value)
 
 ; lookup-store : store addr -> Set(value)
+; TODO
 (define lookup-store hash-ref)
 ; ext-store : store addr val -> store
 (define (ext-store store addr val)
@@ -41,7 +43,7 @@
 (define (tick s)
   (+ 1 (State-time s)))
 
-; step : state -> state*
+; step : state -> [state]
 (define (step s)
   (match s
     [(State (Var x) env store k t)
@@ -54,7 +56,7 @@
      (define new-k (ArgK arg env addr))
      (define t^ (tick s))
      (list (State fun env new-store new-k t^))]
-    [(State (Lam var exp) env store (ArgK e k-env k-addr) t)
+    [(State (Lam var exp) env store (ArgK e k-env k-addr) t) ;TODO (Lam var exp)
      (define t^ (tick s))
      (list (State e k-env store (AppK (Lam var exp) env k-addr) t^))]
     [(State (Lam var exp) env store (AppK (Lam x e) k-env k-addr) t)
@@ -89,5 +91,14 @@
   (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
                 (hasheq 1 (set 'a 'b) 2 (set 'c))))
 
-(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
-(aval (Lam "x" (Var "x")))
+(define (parse exp)
+  (match exp
+    [(? symbol?) (Var exp)]
+    [`(lambda (,var) ,body) (Lam var (parse body))]
+    [`(,rator ,rand) (App (parse rator) (parse rand))]))
+    
+;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
+;(aval (Lam "x" (Var "x")))
+
+(aval (parse '{{lambda {x} x} {lambda {y} y}}))
+(aval (parse '{lambda {x} x}))
