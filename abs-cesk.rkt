@@ -23,7 +23,7 @@
 
 ; Store : addr -> Set(value)
 
-; lookup-store store addr
+; lookup-store : store addr -> Set(value)
 (define lookup-store hash-ref)
 ; ext-store : store addr set(val) -> store
 (define (ext-store store addr val)
@@ -34,7 +34,7 @@
 (define mt-store (make-immutable-hasheq))
 
 (define (alloc s)
-  (+ 1 (first (first (State-store s)))))
+  (+ 1 (foldl max 0 (hash-keys (State-store s)))))
 
 (define (tick s)
   (+ 1 (State-time s)))
@@ -60,4 +60,23 @@
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State e (ext-env k-env x v-addr)
-              (ext-store store v-addr (Clo (Lam var exp) env)) k t^))]))
+              (ext-store store v-addr (Clo (Lam var exp) env)) k t^))]
+    [s s]))
+
+(define (inject e)
+  (State e mt-env mt-store (DoneK) 0))
+
+(define (explore f s)
+  (search f (set) (list s)))
+
+(define (search f seen todo)
+  (cond [(empty? todo) seen]
+        [(set-member? seen (first todo))
+         (search f seen (cdr todo))]
+        [else (search f (set-add seen (first todo))
+                      (append (f (first todo)) (cdr todo)))]))
+
+(define (aval e)
+  (explore step (inject e)))
+
+(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
