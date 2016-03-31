@@ -1,9 +1,11 @@
 #lang racket
 
-(struct State (exp env store kont time))
-(struct Var (name))
-(struct Lam (var exp))
-(struct App (fun arg))
+(require rackunit)
+
+(struct State (exp env store kont time) #:transparent)
+(struct Var (name) #:transparent)
+(struct Lam (var exp) #:transparent)
+(struct App (fun arg) #:transparent)
 
 (struct DoneK ())
 (struct ArgK (exp env addr))
@@ -25,12 +27,12 @@
 
 ; lookup-store : store addr -> Set(value)
 (define lookup-store hash-ref)
-; ext-store : store addr set(val) -> store
+; ext-store : store addr val -> store
 (define (ext-store store addr val)
   (if (hash-has-key? store addr)
-      (let ([old-vals (hash-ref store addr)])
-        (hash-set store addr (set-union old-vals val)))
-      (hash-set store addr val)))
+      (let ([old-vals (lookup-store store addr)])
+        (hash-set store addr (set-union old-vals (set val))))
+      (hash-set store addr (set val))))
 (define mt-store (make-immutable-hasheq))
 
 (define (alloc s)
@@ -48,7 +50,7 @@
        (State (Clo-lam val) (Clo-env val) store k t^))]
     [(State (App fun arg) env store k t)
      (define addr (alloc s))
-     (define new-store (ext-store store addr (set (Cont k))))
+     (define new-store (ext-store store addr (Cont k)))
      (define new-k (ArgK arg env addr))
      (define t^ (tick s))
      (list (State fun env new-store new-k t^))]
@@ -61,7 +63,7 @@
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State e (ext-env k-env x v-addr)
               (ext-store store v-addr (Clo (Lam var exp) env)) k t^))]
-    [s s]))
+    [s (list s)]))
 
 (define (inject e)
   (State e mt-env mt-store (DoneK) 0))
@@ -79,4 +81,13 @@
 (define (aval e)
   (explore step (inject e)))
 
+(module+ test
+  (check-equal? (ext-store mt-store 1 'a)
+                (hasheq 1 (set 'a)))
+  (check-equal? (ext-store (ext-store mt-store 1 'a) 1 'b)
+                (hasheq 1 (set 'a 'b)))
+  (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
+                (hasheq 1 (set 'a 'b) 2 (set 'c))))
+
 (aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
+(aval (Lam "x" (Var "x")))
