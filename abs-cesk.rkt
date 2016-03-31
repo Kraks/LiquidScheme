@@ -1,5 +1,9 @@
 #lang racket
 
+;TODO
+; Integer, +, Continuation
+; Bool, and, Continuation
+
 (require rackunit)
 
 (struct State (exp env store kont time) #:transparent)
@@ -18,7 +22,6 @@
 ; Env : var -> addr
 
 ; lookup-env env var
-; TODO
 (define lookup-env hash-ref)
 ; ext-env env var addr
 (define ext-env hash-set)
@@ -27,8 +30,10 @@
 ; Store : addr -> Set(value)
 
 ; lookup-store : store addr -> Set(value)
-; TODO
-(define lookup-store hash-ref)
+(define (lookup-store store addr)
+  (if (hash-hash-key? store addr)
+      (hash-ref store addr)
+      (set)))
 ; ext-store : store addr val -> store
 (define (ext-store store addr val)
   (if (hash-has-key? store addr)
