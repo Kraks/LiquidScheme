@@ -7,10 +7,13 @@
 (require rackunit)
 
 (struct State (exp env store kont time) #:transparent)
+
+; Exp
 (struct Var (name) #:transparent)
 (struct Lam (var exp) #:transparent)
 (struct App (fun arg) #:transparent)
 
+; Continuation
 (struct DoneK ())
 (struct ArgK (exp env addr))
 (struct AppK (lam env addr))
