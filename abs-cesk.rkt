@@ -14,9 +14,9 @@
 (struct App (fun arg) #:transparent)
 
 ; Continuation
-(struct DoneK ())
-(struct ArgK (exp env addr))
-(struct AppK (lam env addr))
+(struct DoneK () #:transparent)
+(struct ArgK (exp env addr) #:transparent)
+(struct AppK (lam env addr) #:transparent)
 
 ; Storable
 (struct Clo (lam env))
@@ -55,24 +55,20 @@
 (define (step s)
   (match s
     [(State (Var x) env store k t)
-     (define t^ (tick s))
      (for/list ([val (set->list (lookup-store store (lookup-env env x)))])
-       (State (Clo-lam val) (Clo-env val) store k t^))]
+       (State (Clo-lam val) (Clo-env val) store k (tick s)))]
     [(State (App fun arg) env store k t)
      (define addr (alloc s))
      (define new-store (ext-store store addr (Cont k)))
      (define new-k (ArgK arg env addr))
-     (define t^ (tick s))
-     (list (State fun env new-store new-k t^))]
+     (list (State fun env new-store new-k (tick s)))]
     [(State (Lam var exp) env store (ArgK e k-env k-addr) t) ;TODO (Lam var exp)
-     (define t^ (tick s))
-     (list (State e k-env store (AppK (Lam var exp) env k-addr) t^))]
+     (list (State e k-env store (AppK (Lam var exp) env k-addr) (tick s)))]
     [(State (Lam var exp) env store (AppK (Lam x e) k-env k-addr) t)
-     (define t^ (tick s))
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State e (ext-env k-env x v-addr)
-              (ext-store store v-addr (Clo (Lam var exp) env)) k t^))]
+              (ext-store store v-addr (Clo (Lam var exp) env)) (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -104,9 +100,12 @@
     [(? symbol?) (Var exp)]
     [`(lambda (,var) ,body) (Lam var (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
+
+(define (sort-state-set states)
+  (sort (set->list states) < #:key State-time))
     
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
-(aval (parse '{{lambda {x} x} {lambda {y} y}}))
+(sort-state-set (aval (parse '{{lambda {x} x} {lambda {y} y}})))
 (aval (parse '{lambda {x} x}))
