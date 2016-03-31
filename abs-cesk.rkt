@@ -31,7 +31,7 @@
 
 ; lookup-store : store addr -> Set(value)
 (define (lookup-store store addr)
-  (if (hash-hash-key? store addr)
+  (if (hash-has-key? store addr)
       (hash-ref store addr)
       (set)))
 ; ext-store : store addr val -> store
