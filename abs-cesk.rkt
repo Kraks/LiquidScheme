@@ -77,9 +77,10 @@ TODO
        (cond [(Clo? val) (State (Clo-lam val) (Clo-env val) store k (tick s))]
              [else (State val env store k (tick s))]))]
     [(State (App fun arg) env store k t)
-     (define addr (alloc s))
-     (define new-store (ext-store store addr (Cont k)))
-     (define new-k (ArgK arg env addr))
+     (define k-addr (alloc s))
+     (printf "apply on ~a continues to addr[~a]\n" (Lam-label fun) k-addr)
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (ArgK arg env k-addr))
      (list (State fun env new-store new-k (tick s)))]
     [(State (Lam label var exp) env store (ArgK e k-env k-addr) t) ;TODO (Lam var exp)
      (list (State e k-env store (AppK (Lam label var exp) env k-addr) (tick s)))]
@@ -87,6 +88,7 @@ TODO
      (define val
        (cond [(Lam? exp) (Clo exp env)]
              [else exp]))
+     (printf "~a's argument is ~a\n" label val)
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
@@ -103,7 +105,6 @@ TODO
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
     [(State (And l r) env store k t)
-     ;TODO
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (AndK r env new-store k-addr))
@@ -167,14 +168,16 @@ TODO
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
-(aval (parse '{{lambda {x} x} {lambda {y} y}}))
+;(aval (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
 ;(aval (parse '{lambda {x} x}))
-(aval (parse '{lambda {x} x}))
-(aval (parse 3))
+;(aval (parse '{lambda {x} x}))
+;(aval (parse 3))
 ;(aval (parse 'true))
 ;(aval (parse 'false))
 
-(aval (parse '{+ 1 2}))
-(aval (parse '{and true false}))
-(aval (parse '{{lambda {x} x} 1}))
+;(aval (parse '{+ 1 2}))
+;(aval (parse '{and true false}))
+;(aval (parse '{{lambda {x} x} 1}))
+
+(aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}}))
