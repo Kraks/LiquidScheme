@@ -29,9 +29,7 @@
 (struct OrK (r env store addr) #:transparent)
 (struct DoOrK (l addr) #:transparent)
 (struct DoNotK (addr) #:transparent)
-;;
 (struct DoIfK (thn els addr) #:transparent)
-;;
 
 ; Storable
 (struct Clo (lam env) #:transparent)
@@ -40,6 +38,15 @@
 (struct BoolValue () #:transparent)
 
 (struct Callsite (label k) #:transparent)
+(struct ArrowType (arg ret) #:transparent)
+
+(define (isPrimitive? v)
+  (match v
+    [(? Lam?) #t]
+    [(? Clo?) #t]
+    [(? IntValue?) #t]
+    [(? BoolValue?) #t]
+    [_ #f]))
 
 ; Env : var -> addr
 
@@ -77,11 +84,14 @@
 
 ; step : state -> [state]
 (define (step s)
-  (if (hash-has-key? k2call (State-kont s))
+  (if (and (hash-has-key? k2call (State-kont s))
+           (isPrimitive? (State-exp s)))
       (let* ([label (hash-ref k2call (State-kont s))]
-             [cur (hash-ref call2type (Callsite label (State-kont s)))])
-        (hash-set! call2type (Callsite label (State-kont s)) (cons (car cur) (State-exp s))))
-      (void))
+             [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
+        (hash-set! call2type (Callsite label (State-kont s))
+                   (ArrowType (ArrowType-arg cur-type)
+                              (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
+        (void))
   (match s
     ; Int
     [(State (Int) env store k t)
@@ -112,7 +122,7 @@
      (for/list ([k (set->list (lookup-store store k-addr))])
        ; save argument type info and callsite info
        (hash-set! k2call (Cont-k k) label)
-       (hash-set! call2type (Callsite label (Cont-k k)) `(,exp))
+       (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set)))
        (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
     ; Plus
     [(State (Plus l r) env store k t)
@@ -180,6 +190,7 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (DoIfK thn els k-addr))
      (list (State tst env new-store new-k (tick s)))]
+    ; If: evaluate test
     [(State tst env store (DoIfK thn els k-addr) t)
      (check-true (BoolValue? tst))
      (append (for/list ([k (set->list (lookup-store store k-addr))])
@@ -230,14 +241,17 @@
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
-(define (pretty-type t)
+(define (primitive->string t)
   (match t
     [(BoolValue) "bool"]
     [(IntValue) "int"]
     [(Lam label var body) "lambda"]
-    [(App rator rand) "app"]
-    [`(,arg . ,ret) (string-append (pretty-type arg) " -> " (pretty-type ret))]))
+    [_ (error 'primitve->string "unknown type")]))
 
+(define (arrow-type->string t)
+  (match t
+    [(ArrowType arg ret) (string-append (primitive->string arg) " -> (" (string-join (set-map ret primitive->string)) ")")]))
+     
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
                 (hash 1 (set 'a)))
@@ -250,6 +264,8 @@
 ;(parse '{let ([x 1]) x})
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
+;(aval (parse '{if true 3 4}))
+;(aval (parse '{if true 3 false}))
 
 ;(aval (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
@@ -272,6 +288,7 @@
 ;(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
 ;                          {f 1}})))
 
+#;
 (define s5 (aval (parse '{let {[id {lambda id {x} x}]}
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
@@ -279,12 +296,11 @@
 
 ;(define s6 (aval (parse '{{lambda {x} {not x}} true})))
 
+(define s7 (aval (parse '{{lambda {x} {if x 2 true}} false})))
+
 (hash-for-each call2type
                (λ (key type)
                  (let ([label (Callsite-label key)])
                    (if (not (string-prefix? (symbol->string label) "let"))
-                       (printf "~a has type: ~a\n" (Callsite-label key) (pretty-type type))
+                       (printf "~a has type: ~a\n" (Callsite-label key) (arrow-type->string type))
                        (void)))))
-
-(aval (parse '{if true 3 4}))
-(aval (parse '{if true 3 false}))
