@@ -173,14 +173,6 @@
 (define (aval e)
   (sort-state-set (explore step (inject e))))
 
-(module+ test
-  (check-equal? (ext-store mt-store 1 'a)
-                (hash 1 (set 'a)))
-  (check-equal? (ext-store (ext-store mt-store 1 'a) 1 'b)
-                (hash 1 (set 'a 'b)))
-  (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
-                (hash 1 (set 'a 'b) 2 (set 'c))))
-
 (define (parse exp)
   (match exp
     ['true (Bool)]
@@ -199,6 +191,22 @@
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (parse `((lambda (,lhs) ,body) ,rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
+
+
+(define (pretty-type t)
+  (match t
+    [(BoolValue) "bool"]
+    [(IntValue) "int"]
+    [(Lam label var body) "lambda"]
+    [`(,arg . ,ret) (string-append (pretty-type arg) " -> " (pretty-type ret))]))
+
+(module+ test
+  (check-equal? (ext-store mt-store 1 'a)
+                (hash 1 (set 'a)))
+  (check-equal? (ext-store (ext-store mt-store 1 'a) 1 'b)
+                (hash 1 (set 'a 'b)))
+  (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
+                (hash 1 (set 'a 'b) 2 (set 'c))))
 
 ;(parse '{{lambda {x} x} {lambda {y} y}})
 ;(parse '{let ([x 1]) x})
@@ -222,13 +230,6 @@
 (define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
 (define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
 (define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
-
-(define (pretty-type t)
-  (match t
-    [(BoolValue) "bool"]
-    [(IntValue) "int"]
-    [(Lam label var body) "lambda"]
-    [`(,arg . ,ret) (string-append (pretty-type arg) " -> " (pretty-type ret))])) 
 
 (hash-for-each call2type
                (λ (key type)
