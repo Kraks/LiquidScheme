@@ -31,10 +31,12 @@ TODO
 |#
 
 ; Storable
-(struct Clo (lam env))
-(struct Cont (k))
-(struct IntValue ())
-(struct BoolValue ())
+(struct Clo (lam env) #:transparent)
+(struct Cont (k) #:transparent)
+(struct IntValue () #:transparent)
+(struct BoolValue () #:transparent)
+
+(struct Callsite (label k) #:transparent)
 
 ; Env : var -> addr
 
@@ -42,7 +44,7 @@ TODO
 (define lookup-env hash-ref)
 ; ext-env env var addr
 (define ext-env hash-set)
-(define mt-env (make-immutable-hasheq))
+(define mt-env (make-immutable-hash))
 
 ; Store : addr -> Set(value)
 
@@ -57,7 +59,7 @@ TODO
       (let ([old-vals (lookup-store store addr)])
         (hash-set store addr (set-union old-vals (set val))))
       (hash-set store addr (set val))))
-(define mt-store (make-immutable-hasheq))
+(define mt-store (make-immutable-hash))
 
 (define (alloc s)
   (+ 1 (foldl max 0 (hash-keys (State-store s)))))
@@ -65,8 +67,16 @@ TODO
 (define (tick s)
   (+ 1 (State-time s)))
 
+(define call2type (make-hash))
+(define k2call (make-hash))
+
 ; step : state -> [state]
 (define (step s)
+  (if (hash-has-key? k2call (State-kont s))
+      (let* ([label (hash-ref k2call (State-kont s))]
+             [cur (hash-ref call2type (Callsite label (State-kont s)))])
+        (hash-set! call2type (Callsite label (State-kont s)) (cons (car cur) (State-exp s))))
+      (void))
   (match s
     [(State (Int) env store k t)
      (list (State (IntValue) env store k (tick s)))]
@@ -78,7 +88,7 @@ TODO
              [else (State val env store k (tick s))]))]
     [(State (App fun arg) env store k t)
      (define k-addr (alloc s))
-     (printf "apply on ~a continues to addr[~a]\n" (Lam-label fun) k-addr)
+     ;(printf "(~a ~a)'s contiunation is ~a\n" (Lam-label fun) arg k)
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (ArgK arg env k-addr))
      (list (State fun env new-store new-k (tick s)))]
@@ -88,9 +98,11 @@ TODO
      (define val
        (cond [(Lam? exp) (Clo exp env)]
              [else exp]))
-     (printf "~a's argument is ~a\n" label val)
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
+       ; save argument type info and callsite info
+       (hash-set! k2call (Cont-k k) label)
+       (hash-set! call2type (Callsite label (Cont-k k)) `(,exp))
        (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
     [(State (Plus l r) env store k t)
      (define k-addr (alloc s))
@@ -140,11 +152,11 @@ TODO
 
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
-                (hasheq 1 (set 'a)))
+                (hash 1 (set 'a)))
   (check-equal? (ext-store (ext-store mt-store 1 'a) 1 'b)
-                (hasheq 1 (set 'a 'b)))
+                (hash 1 (set 'a 'b)))
   (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
-                (hasheq 1 (set 'a 'b) 2 (set 'c))))
+                (hash 1 (set 'a 'b) 2 (set 'c))))
 
 (define (parse exp)
   (match exp
@@ -180,4 +192,7 @@ TODO
 ;(aval (parse '{and true false}))
 ;(aval (parse '{{lambda {x} x} 1}))
 
-(aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}}))
+;(define states (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
+(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
+(define s2 (aval (parse '{+ {{lambda {x} {+ x 2}} 2} 2})))
+(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
