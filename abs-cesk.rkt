@@ -288,7 +288,7 @@
 ;(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
 ;                          {f 1}})))
 
-#;
+
 (define s5 (aval (parse '{let {[id {lambda id {x} x}]}
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
@@ -296,7 +296,7 @@
 
 ;(define s6 (aval (parse '{{lambda {x} {not x}} true})))
 
-(define s7 (aval (parse '{{lambda {x} {if x 2 true}} false})))
+;(define s7 (aval (parse '{{lambda intorbool {x} {if x 2 true}} false})))
 
 (hash-for-each call2type
                (λ (key type)
