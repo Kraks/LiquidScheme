@@ -1,9 +1,5 @@
 #lang racket
 
-;TODO
-; Integer, +, Continuation
-; Bool, and, Continuation
-
 (require rackunit)
 
 (struct State (exp env store kont time) #:transparent)
@@ -12,15 +8,33 @@
 (struct Var (name) #:transparent)
 (struct Lam (label var exp) #:transparent)
 (struct App (fun arg) #:transparent)
+(struct Int () #:transparent)
+(struct Bool () #:transparent)
+(struct Plus (lhs rhs) #:transparent)
+(struct And (lhs rhs) #:transparent)
+(struct Or (lhs rhs) #:transparent)
+(struct Not (bl) #:transparent)
 
 ; Continuation
 (struct DoneK () #:transparent)
 (struct ArgK (exp env addr) #:transparent)
 (struct AppK (lam env addr) #:transparent)
+(struct PlusK (r env store addr) #:transparent)
+(struct DoPlusK (l addr) #:transparent)
+(struct AndK (r env store addr) #:transparent)
+(struct DoAndK (l addr) #:transparent)
+#|
+TODO
+(struct OrK (...) #:transparent)
+(struct DoOrK (...) #:transparent)
+(struct DoNotK (...) #:transparent)
+|#
 
 ; Storable
 (struct Clo (lam env))
 (struct Cont (k))
+(struct IntValue ())
+(struct BoolValue ())
 
 ; Env : var -> addr
 
@@ -54,22 +68,53 @@
 ; step : state -> [state]
 (define (step s)
   (match s
+    [(State (Int) env store k t)
+     (list (State (IntValue) env store k (tick s)))]
+    [(State (Bool) env store k t)
+     (list (State (BoolValue) env store k (tick s)))]
     [(State (Var x) env store k t)
      (for/list ([val (set->list (lookup-store store (lookup-env env x)))])
-       (State (Clo-lam val) (Clo-env val) store k (tick s)))]
+       (cond [(Clo? val) (State (Clo-lam val) (Clo-env val) store k (tick s))]
+             [else (State val env store k (tick s))]))]
     [(State (App fun arg) env store k t)
      (define addr (alloc s))
      (define new-store (ext-store store addr (Cont k)))
      (define new-k (ArgK arg env addr))
      (list (State fun env new-store new-k (tick s)))]
-    [(State (Lam label var exp) env store (ArgK e k-env k-addr) t)
+    [(State (Lam label var exp) env store (ArgK e k-env k-addr) t) ;TODO (Lam var exp)
      (list (State e k-env store (AppK (Lam label var exp) env k-addr) (tick s)))]
-    [(State (Lam arg-label var exp) env store (AppK (Lam fun-lab x e) k-env k-addr) t)
-     ; x -> (Lam arg-label var exp)
+    [(State exp env store (AppK (Lam label x e) k-env k-addr) t)
+     (define val
+       (cond [(Lam? exp) (Clo exp env)]
+             [else exp]))
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
-       (State e (ext-env k-env x v-addr)
-              (ext-store store v-addr (Clo (Lam arg-label var exp) env)) (Cont-k k) (tick s)))]
+       (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
+    [(State (Plus l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (PlusK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    [(State l env store (PlusK r r-env r-store k-addr) t)
+     (list (State r r-env r-store (DoPlusK l k-addr) (tick s)))]
+    [(State r env store (DoPlusK l k-addr) t)
+     (check-true (IntValue? l))
+     (check-true (IntValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (IntValue) env store (Cont-k k) (tick s)))]
+    [(State (And l r) env store k t)
+     ;TODO
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (AndK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    [(State l env store (AndK r r-env r-store k-addr) t)
+     (list (State r r-env r-store (DoAndK l k-addr) (tick s)))]
+    [(State r env store (DoAndK l k-addr) t)
+     (check-true (BoolValue? l))
+     (check-true (BoolValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (BoolValue) env store (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -102,7 +147,18 @@
 
 (define (parse exp)
   (match exp
+    ['true (Bool)]
+    ['false (Bool)]
+    [(? integer?) (Int)]
     [(? symbol?) (Var exp)]
+    [`(+ ,lhs ,rhs)
+     (Plus (parse lhs) (parse rhs))]
+    [`(and ,lhs ,rhs)
+     (And (parse lhs) (parse rhs))]
+    [`(or ,lhs ,rhs)
+     (Or (parse lhs) (parse rhs))]
+    [`(not ,bl)
+     (Not (parse bl))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
@@ -113,3 +169,11 @@
 (aval (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
 ;(aval (parse '{lambda {x} x}))
+(aval (parse '{lambda {x} x}))
+(aval (parse 3))
+;(aval (parse 'true))
+;(aval (parse 'false))
+
+(aval (parse '{+ 1 2}))
+(aval (parse '{and true false}))
+(aval (parse '{{lambda {x} x} 1}))
