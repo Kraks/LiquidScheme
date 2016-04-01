@@ -241,16 +241,26 @@
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
+; TODO: may has multiple
+(define (find-lambda-type label)
+  (first (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type)))))
+
 (define (primitive->string t)
   (match t
     [(BoolValue) "bool"]
     [(IntValue) "int"]
-    [(Lam label var body) "lambda"]
-    [_ (error 'primitve->string "unknown type")]))
+    [(Lam label arg body)
+     (arrow-type->string (find-lambda-type label))]
+    [_ (error 'primitve->string "not primitive type")]))
 
 (define (arrow-type->string t)
   (match t
-    [(ArrowType arg ret) (string-append (primitive->string arg) " -> (" (string-join (set-map ret primitive->string)) ")")]))
+    [(ArrowType arg ret)
+     (string-append (primitive->string arg)
+                    " -> "
+                    (if (= 1 (set-count ret))
+                        (primitive->string (set-first ret))
+                        (string-append "(" (string-join (set-map ret primitive->string)) ")")))]))
      
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
@@ -283,12 +293,13 @@
 
 ;(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
 ;(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
-;(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
 
-;(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
-;                          {f 1}})))
+#;
+(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
+                           {f 1}})))
 
-
+#;
 (define s5 (aval (parse '{let {[id {lambda id {x} x}]}
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
