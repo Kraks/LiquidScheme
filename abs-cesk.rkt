@@ -123,7 +123,7 @@
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
-                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+             (State (BoolValue) env store (Cont-k k) (tick s))))]
     [(State r env store (DoAndK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -137,11 +137,11 @@
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
-                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+             (State (BoolValue) env store (Cont-k k) (tick s))))]
     [(State r env store (DoOrK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
-        (State (BoolValue) env store (Cont-k k) (tick s)))]
+       (State (BoolValue) env store (Cont-k k) (tick s)))]
     [(State (Not bl) env store k t)
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
@@ -150,7 +150,7 @@
     [(State bl env store (DoNotK k-addr) t)
      (check-true (BoolValue? bl))
      (for/list ([k (set->list (lookup-store store k-addr))])
-               (State (BoolValue) env store (Cont-k k) (tick s)))]
+       (State (BoolValue) env store (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -189,15 +189,15 @@
      (Not (parse bl))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
-    [`(let ((,lhs ,rhs)) ,body) (parse `((lambda (,lhs) ,body) ,rhs))]
+    [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
-
 
 (define (pretty-type t)
   (match t
     [(BoolValue) "bool"]
     [(IntValue) "int"]
     [(Lam label var body) "lambda"]
+    [(App rator rand) "app"]
     [`(,arg . ,ret) (string-append (pretty-type arg) " -> " (pretty-type ret))]))
 
 (module+ test
@@ -227,10 +227,24 @@
 ;(aval (parse '{or true false}))
 ;(aval (parse '{not true}))
 
-(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
-(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
-(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+;(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
+;(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
+;(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+
+;(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
+;                          {f 1}})))
+
+
+(define s5 (aval (parse '{let {[id {lambda id {x} x}]}
+                           {let {[one {id 1}]}
+                             {let {[fls {not {id true}}]}
+                               fls}}})))
+
+;(define s6 (aval (parse '{{lambda {x} {not x}} true})))
 
 (hash-for-each call2type
                (λ (key type)
-                 (printf "~a hash type: ~a\n" (Callsite-label key) (pretty-type type))))
+                 (let ([label (Callsite-label key)])
+                   (if (not (string-prefix? (symbol->string label) "let"))
+                       (printf "~a has type: ~a\n" (Callsite-label key) (pretty-type type))
+                       (void)))))
