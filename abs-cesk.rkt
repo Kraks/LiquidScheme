@@ -23,12 +23,9 @@
 (struct DoPlusK (l addr) #:transparent)
 (struct AndK (r env store addr) #:transparent)
 (struct DoAndK (l addr) #:transparent)
-#|
-TODO
-(struct OrK (...) #:transparent)
-(struct DoOrK (...) #:transparent)
-(struct DoNotK (...) #:transparent)
-|#
+(struct OrK (r env store addr) #:transparent)
+(struct DoOrK (l addr) #:transparent)
+(struct DoNotK (addr) #:transparent)
 
 ; Storable
 (struct Clo (lam env) #:transparent)
@@ -67,7 +64,9 @@ TODO
 (define (tick s)
   (+ 1 (State-time s)))
 
+; Callsite -> list
 (define call2type (make-hash))
+; Cont -> label
 (define k2call (make-hash))
 
 ; step : state -> [state]
@@ -88,7 +87,6 @@ TODO
              [else (State val env store k (tick s))]))]
     [(State (App fun arg) env store k t)
      (define k-addr (alloc s))
-     ;(printf "(~a ~a)'s contiunation is ~a\n" (Lam-label fun) arg k)
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (ArgK arg env k-addr))
      (list (State fun env new-store new-k (tick s)))]
@@ -122,12 +120,37 @@ TODO
      (define new-k (AndK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     [(State l env store (AndK r r-env r-store k-addr) t)
-     (list (State r r-env r-store (DoAndK l k-addr) (tick s)))]
-    [(State r env store (DoAndK l k-addr) t)
      (check-true (BoolValue? l))
+     (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
+           (for/list ([k (set->list (lookup-store store k-addr))])
+                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+    [(State r env store (DoAndK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (BoolValue) env store (Cont-k k) (tick s)))]
+    [(State (Or l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (OrK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    [(State l env store (OrK r r-env r-store k-addr) t)
+     (check-true (BoolValue? l))
+     (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
+           (for/list ([k (set->list (lookup-store store k-addr))])
+                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+    [(State r env store (DoOrK l k-addr) t)
+     (check-true (BoolValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (BoolValue) env store (Cont-k k) (tick s)))]
+    [(State (Not bl) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (DoNotK k-addr))
+     (list (State bl env new-store new-k (tick s)))]
+    [(State bl env store (DoNotK k-addr) t)
+     (check-true (BoolValue? bl))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+               (State (BoolValue) env store (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -176,7 +199,9 @@ TODO
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (parse `((lambda (,lhs) ,body) ,rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
-    
+
+;(parse '{{lambda {x} x} {lambda {y} y}})
+;(parse '{let ([x 1]) x})
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
@@ -189,10 +214,22 @@ TODO
 ;(aval (parse 'false))
 
 ;(aval (parse '{+ 1 2}))
-;(aval (parse '{and true false}))
 ;(aval (parse '{{lambda {x} x} 1}))
+;(aval (parse '{and true false}))
+;(aval (parse '{or true false}))
+;(aval (parse '{not true}))
 
-;(define states (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
 (define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
-(define s2 (aval (parse '{+ {{lambda {x} {+ x 2}} 2} 2})))
+(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
 (define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+
+(define (pretty-type t)
+  (match t
+    [(BoolValue) "bool"]
+    [(IntValue) "int"]
+    [(Lam label var body) "lambda"]
+    [`(,arg . ,ret) (string-append (pretty-type arg) " -> " (pretty-type ret))])) 
+
+(hash-for-each call2type
+               (λ (key type)
+                 (printf "~a hash type: ~a\n" (Callsite-label key) (pretty-type type))))
