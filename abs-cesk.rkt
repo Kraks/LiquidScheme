@@ -23,12 +23,9 @@
 (struct DoPlusK (l addr) #:transparent)
 (struct AndK (r env store addr) #:transparent)
 (struct DoAndK (l addr) #:transparent)
-#|
-TODO
-(struct OrK (...) #:transparent)
-(struct DoOrK (...) #:transparent)
-(struct DoNotK (...) #:transparent)
-|#
+(struct OrK (r env store addr) #:transparent)
+(struct DoOrK (l addr) #:transparent)
+(struct DoNotK (addr) #:transparent)
 
 ; Storable
 (struct Clo (lam env))
@@ -103,18 +100,42 @@ TODO
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
     [(State (And l r) env store k t)
-     ;TODO
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (AndK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     [(State l env store (AndK r r-env r-store k-addr) t)
-     (list (State r r-env r-store (DoAndK l k-addr) (tick s)))]
-    [(State r env store (DoAndK l k-addr) t)
      (check-true (BoolValue? l))
+     (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
+           (for/list ([k (set->list (lookup-store store k-addr))])
+                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+    [(State r env store (DoAndK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (BoolValue) env store (Cont-k k) (tick s)))]
+    [(State (Or l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (OrK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    [(State l env store (OrK r r-env r-store k-addr) t)
+     (check-true (BoolValue? l))
+     (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
+           (for/list ([k (set->list (lookup-store store k-addr))])
+                     (State (BoolValue) env store (Cont-k k) (tick s))))]
+    [(State r env store (DoOrK l k-addr) t)
+     (check-true (BoolValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (BoolValue) env store (Cont-k k) (tick s)))]
+    [(State (Not bl) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (DoNotK k-addr))
+     (list (State bl env new-store new-k (tick s)))]
+    [(State bl env store (DoNotK k-addr) t)
+     (check-true (BoolValue? bl))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+               (State (BoolValue) env store (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -163,8 +184,11 @@ TODO
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (parse `((lambda (,lhs) ,body) ,rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
-    
-;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
+
+
+(parse '{{lambda {x} x} {lambda {y} y}})
+(parse '{let ([x 1]) x})
+  ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
 (aval (parse '{{lambda {x} x} {lambda {y} y}}))
@@ -174,7 +198,18 @@ TODO
 (aval (parse 3))
 ;(aval (parse 'true))
 ;(aval (parse 'false))
-
 (aval (parse '{+ 1 2}))
-(aval (parse '{and true false}))
 (aval (parse '{{lambda {x} x} 1}))
+(aval (parse '{and true false}))
+(aval (parse '{or true false}))
+(aval (parse '{not true}))
+
+
+
+(module+ test
+  (check-equal? (lookup-store (hasheq 1 (set (IntValue))) 2)
+                (set))
+  (check-equal? (parse '{+ 1 2})
+                (Plus (Int) (Int)))
+  (check-equal? (parse '{lambda λ1 {x} x})
+                (Lam 'λ1 'x (Var 'x))))
