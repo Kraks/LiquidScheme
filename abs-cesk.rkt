@@ -14,6 +14,9 @@
 (struct And (lhs rhs) #:transparent)
 (struct Or (lhs rhs) #:transparent)
 (struct Not (bl) #:transparent)
+;;
+(struct If (tst thn els) #:transparent)
+;;
 
 ; Continuation
 (struct DoneK () #:transparent)
@@ -26,6 +29,9 @@
 (struct OrK (r env store addr) #:transparent)
 (struct DoOrK (l addr) #:transparent)
 (struct DoNotK (addr) #:transparent)
+;;
+(struct DoIfK (thn els addr) #:transparent)
+;;
 
 ; Storable
 (struct Clo (lam env) #:transparent)
@@ -151,6 +157,19 @@
      (check-true (BoolValue? bl))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
+    ;;
+    [(State (If tst thn els) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (DoIfK thn els k-addr))
+     (list (State tst env new-store new-k (tick s)))]
+    [(State tst env store (DoIfK thn els k-addr) t)
+     (check-true (BoolValue? tst))
+     (append (for/list ([k (set->list (lookup-store store k-addr))])
+               (State thn env store (Cont-k k) (tick s)))
+             (for/list ([k (set->list (lookup-store store k-addr))])
+               (State els env store (Cont-k k) (tick s))))]
+    ;;    
     [s (list s)]))
 
 (define (inject e)
@@ -187,6 +206,8 @@
      (Or (parse lhs) (parse rhs))]
     [`(not ,bl)
      (Not (parse bl))]
+    [`(if ,tst ,thn ,els)
+     (If (parse tst) (parse thn) (parse els))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
@@ -248,3 +269,6 @@
                    (if (not (string-prefix? (symbol->string label) "let"))
                        (printf "~a has type: ~a\n" (Callsite-label key) (pretty-type type))
                        (void)))))
+
+(aval (parse '{if true 3 4}))
+(aval (parse '{if true 3 false}))
