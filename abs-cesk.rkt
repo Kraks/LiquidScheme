@@ -10,7 +10,7 @@
 
 ; Exp
 (struct Var (name) #:transparent)
-(struct Lam (var exp) #:transparent)
+(struct Lam (label var exp) #:transparent)
 (struct App (fun arg) #:transparent)
 
 ; Continuation
@@ -62,13 +62,14 @@
      (define new-store (ext-store store addr (Cont k)))
      (define new-k (ArgK arg env addr))
      (list (State fun env new-store new-k (tick s)))]
-    [(State (Lam var exp) env store (ArgK e k-env k-addr) t) ;TODO (Lam var exp)
-     (list (State e k-env store (AppK (Lam var exp) env k-addr) (tick s)))]
-    [(State (Lam var exp) env store (AppK (Lam x e) k-env k-addr) t)
+    [(State (Lam label var exp) env store (ArgK e k-env k-addr) t)
+     (list (State e k-env store (AppK (Lam label var exp) env k-addr) (tick s)))]
+    [(State (Lam arg-label var exp) env store (AppK (Lam fun-lab x e) k-env k-addr) t)
+     ; x -> (Lam arg-label var exp)
      (define v-addr (alloc s))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State e (ext-env k-env x v-addr)
-              (ext-store store v-addr (Clo (Lam var exp) env)) (Cont-k k) (tick s)))]
+              (ext-store store v-addr (Clo (Lam arg-label var exp) env)) (Cont-k k) (tick s)))]
     [s (list s)]))
 
 (define (inject e)
@@ -102,11 +103,13 @@
 (define (parse exp)
   (match exp
     [(? symbol?) (Var exp)]
-    [`(lambda (,var) ,body) (Lam var (parse body))]
+    [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
+    [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
     
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
 ;(aval (Lam "x" (Var "x")))
 
 (aval (parse '{{lambda {x} x} {lambda {y} y}}))
-(aval (parse '{lambda {x} x}))
+;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
+;(aval (parse '{lambda {x} x}))
