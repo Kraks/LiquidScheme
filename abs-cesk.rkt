@@ -161,6 +161,7 @@ TODO
      (Not (parse bl))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
+    [`(let ((,lhs ,rhs)) ,body) (parse `((lambda (,lhs) ,body) ,rhs))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
     
 ;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
