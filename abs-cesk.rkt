@@ -235,7 +235,7 @@
     [(State exp env store (BeginK s2 k-addr) t)
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State s2 env store (Cont-k k) (tick s)))]
-    ; Anything else  
+    ; Anything else
     [s (list s)]))
 
 (define (inject e)
@@ -276,6 +276,10 @@
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
+    [`(letrec ((,lhs ,rhs)) ,body)
+     (parse `(let ((,lhs (void)))
+               (begin (set! ,lhs ,rhs)
+                      ,body)))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 ; TODO: may has multiple
@@ -356,7 +360,9 @@
                             {begin {set! a true}
                                    a}})))
 
-;(define s12 (aval (parse '{let {{fact {void}}}
+;(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
+
+;(define s13 (aval (parse '{let {{fact {void}}}
 ;                            {begin {set! fact {lambda {n} {if {
 
 (hash-for-each call2type
