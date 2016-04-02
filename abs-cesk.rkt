@@ -1,5 +1,8 @@
 #lang racket
 
+; FIXME (aval (parse '{or {not true} false}))
+; TODO NumEq
+
 (require rackunit)
 
 (struct State (exp env store kont time) #:transparent)
@@ -14,9 +17,11 @@
 (struct And (lhs rhs) #:transparent)
 (struct Or (lhs rhs) #:transparent)
 (struct Not (bl) #:transparent)
-;;
+(struct Set (var val) #:transparent)
 (struct If (tst thn els) #:transparent)
-;;
+(struct Begin (s1 s2) #:transparent)
+(struct Void () #:transparent)
+(struct NumEq (lhs rhs) #:transparent)
 
 ; Continuation
 (struct DoneK () #:transparent)
@@ -30,12 +35,17 @@
 (struct DoOrK (l addr) #:transparent)
 (struct DoNotK (addr) #:transparent)
 (struct DoIfK (thn els addr) #:transparent)
+(struct SetK (var addr) #:transparent)
+(struct BeginK (s2 addr) #:transparent)
+(struct NumEqK (r env store addr) #:transparent)
+(struct DoNumEqK (l addr) #:transparent)
 
 ; Storable
 (struct Clo (lam env) #:transparent)
 (struct Cont (k) #:transparent)
 (struct IntValue () #:transparent)
 (struct BoolValue () #:transparent)
+(struct VoidValue () #:transparent)
 
 (struct Callsite (label k) #:transparent)
 (struct ArrowType (arg ret) #:transparent)
@@ -99,6 +109,9 @@
     ; Bool
     [(State (Bool) env store k t)
      (list (State (BoolValue) env store k (tick s)))]
+    ; Void
+    [(State (Void) env store k t)
+     (list (State (VoidValue) env store k (tick s)))]
     ; Ref
     [(State (Var x) env store k t)
      (for/list ([val (set->list (lookup-store store (lookup-env env x)))])
@@ -132,14 +145,15 @@
      (list (State l env new-store new-k (tick s)))]
     ; Plus: evaluate left hand side
     [(State l env store (PlusK r r-env r-store k-addr) t)
+     (check-true (IntValue? l))
      (list (State r r-env r-store (DoPlusK l k-addr) (tick s)))]
     ; Plus: evaluate right hand side
     [(State r env store (DoPlusK l k-addr) t)
-     (check-true (IntValue? l))
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
     ; Logic and
+    ; TODO logic operation actually allows non-boolean values
     [(State (And l r) env store k t)
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
@@ -197,6 +211,28 @@
                (State thn env store (Cont-k k) (tick s)))
              (for/list ([k (set->list (lookup-store store k-addr))])
                (State els env store (Cont-k k) (tick s))))]
+    ; Set!
+    [(State (Set var val) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (SetK var k-addr))
+     (list (State val env new-store (SetK var k-addr) (tick s)))]
+    ; SetK
+    [(State val env store (SetK var k-addr) t)
+     ; TODO Just set the store? or need to join the set? need to reconsider.
+     (define new-store (hash-set store (lookup-env env var) (set val)))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+       (State (VoidValue) env new-store (Cont-k k) (tick s)))]
+    ; Begin
+    [(State (Begin s1 s2) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (BeginK s2 k-addr))
+     (list (State s1 env new-store new-k (tick s)))]
+    ; BeginK: evaluate the second expression
+    [(State exp env store (BeginK s2 k-addr) t)
+     (for/list ([k (set->list (lookup-store store k-addr))])
+       (State s2 env store (Cont-k k) (tick s)))]
     ; Anything else  
     [s (list s)]))
 
@@ -224,18 +260,25 @@
   (match exp
     ['true (Bool)]
     ['false (Bool)]
+    ['(void) (Void)]
     [(? integer?) (Int)]
     [(? symbol?) (Var exp)]
     [`(+ ,lhs ,rhs)
      (Plus (parse lhs) (parse rhs))]
+    [`(= ,lhs ,rhs)
+     (NumEq (parse lhs) (parse rhs))]
     [`(and ,lhs ,rhs)
      (And (parse lhs) (parse rhs))]
     [`(or ,lhs ,rhs)
      (Or (parse lhs) (parse rhs))]
     [`(not ,bl)
      (Not (parse bl))]
+    [`(set! ,var ,val)
+     (Set var (parse val))]
     [`(if ,tst ,thn ,els)
      (If (parse tst) (parse thn) (parse els))]
+    [`(begin ,s1 ,s2)
+     (Begin (parse s1) (parse s2))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
@@ -249,6 +292,7 @@
   (match t
     [(BoolValue) "bool"]
     [(IntValue) "int"]
+    [(VoidValue) "void"]
     [(Lam label arg body)
      (arrow-type->string (find-lambda-type label))]
     [_ (error 'primitve->string "not primitive type")]))
@@ -261,7 +305,7 @@
                     (if (= 1 (set-count ret))
                         (primitive->string (set-first ret))
                         (string-append "(" (string-join (set-map ret primitive->string)) ")")))]))
-     
+
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
                 (hash 1 (set 'a)))
@@ -293,21 +337,33 @@
 
 ;(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
 ;(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
-(define s3 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
 
 #;
-(define s4 (aval (parse '{let {[f {lambda id {x} x}]}
-                           {f 1}})))
-
-#;
-(define s5 (aval (parse '{let {[id {lambda id {x} x}]}
+(define s3 (aval (parse '{let {[id {lambda id {x} x}]}
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
                                fls}}})))
 
-;(define s6 (aval (parse '{{lambda {x} {not x}} true})))
+;(define s4 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+
+#;
+(define s6 (aval (parse '{let {[f {lambda id {x} x}]}
+                           {f 1}})))
 
 ;(define s7 (aval (parse '{{lambda intorbool {x} {if x 2 true}} false})))
+
+;(define s8 (aval (parse '{{lambda {x} {not x}} true})))
+
+;(define s9 (aval (parse '{{{{lambda {x} {lambda {i} {lambda {j} {if x i j}}}} true} 1} 2})))
+;(define s10 (aval (parse '{begin {+ 1 2} {+ 3 4}})))
+
+#;
+(define s11 (aval (parse '{let {{a 1}}
+                            {begin {set! a true}
+                                   a}})))
+
+;(define s12 (aval (parse '{let {{fact {void}}}
+;                            {begin {set! fact {lambda {n} {if {
 
 (hash-for-each call2type
                (λ (key type)
