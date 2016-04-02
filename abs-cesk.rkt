@@ -1,8 +1,9 @@
 #lang racket
 
-; FIXME (aval (parse '{or {not true} false}))
-;       (aval (parse '{+ {if true 1 2} 3}))
-;       Make sure the exp is valid value, NOT a computation structure
+; Done (aval (parse '{or {not true} false}))
+;      (aval (parse '{+ {if true 1 2} 3}))
+;      Make sure the exp is valid value, NOT a computation structure
+
 ; TODO add test cases
 
 (require rackunit)
@@ -106,6 +107,7 @@
 
 ; step : state -> [state]
 (define (step s)
+  (displayln s)
   (if (and (hash-has-key? k2call (State-kont s))
            (valid-value? (State-exp s)))
       (let* ([label (hash-ref k2call (State-kont s))]
@@ -157,11 +159,11 @@
      (define new-k (PlusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     ; Plus: evaluate left hand side
-    [(State l env store (PlusK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (PlusK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoPlusK l k-addr) (tick s)))]
     ; Plus: evaluate right hand side
-    [(State r env store (DoPlusK l k-addr) t)
+    [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
@@ -172,11 +174,11 @@
      (define new-k (MinusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     ; Minus: evaluate left hand side
-    [(State l env store (MinusK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (MinusK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoMinusK l k-addr) (tick s)))]
     ; Minus: evaluate right hand side
-    [(State r env store (DoMinusK l k-addr) t)
+    [(State (? valid-value? r) env store (DoMinusK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
@@ -187,11 +189,11 @@
      (define new-k (MultK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     ; Mult: evaluate left hand side
-    [(State l env store (MultK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (MultK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoMultK l k-addr) (tick s)))]
     ; Mult: evaluate right hand side
-    [(State r env store (DoMultK l k-addr) t)
+    [(State (? valid-value? r) env store (DoMultK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
@@ -200,10 +202,10 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (NumEqK r env new-store k-addr))
      (list (State r env new-store new-k (tick s)))]
-    [(State l env store (NumEqK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (NumEqK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoNumEqK l k-addr) (tick s)))]
-    [(State r env store (DoNumEqK l k-addr) t)
+    [(State (? valid-value? r) env store (DoNumEqK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
@@ -215,13 +217,13 @@
      (define new-k (AndK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     ; Logic and: evaluate left hand side
-    [(State l env store (AndK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (AndK r r-env r-store k-addr) t)
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
              (State (BoolValue) env store (Cont-k k) (tick s))))]
     ; Logic and: evaluate right hand side
-    [(State r env store (DoAndK l k-addr) t)
+    [(State (? valid-value? r) env store (DoAndK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (BoolValue) env store (Cont-k k) (tick s)))]
@@ -232,13 +234,13 @@
      (define new-k (OrK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
     ; Logic or: evaluate left hand side
-    [(State l env store (OrK r r-env r-store k-addr) t)
+    [(State (? valid-value? l) env store (OrK r r-env r-store k-addr) t)
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
              (State (BoolValue) env store (Cont-k k) (tick s))))]
     ; Logic or: evaluate right hand side
-    [(State r env store (DoOrK l k-addr) t)
+    [(State (? valid-value? r) env store (DoOrK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
@@ -249,7 +251,7 @@
      (define new-k (DoNotK k-addr))
      (list (State bl env new-store new-k (tick s)))]
     ; Logic not: evaluate the expr
-    [(State bl env store (DoNotK k-addr) t)
+    [(State (? valid-value? bl) env store (DoNotK k-addr) t)
      (check-true (BoolValue? bl))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
@@ -260,7 +262,7 @@
      (define new-k (DoIfK thn els k-addr))
      (list (State tst env new-store new-k (tick s)))]
     ; If: evaluate test
-    [(State tst env store (DoIfK thn els k-addr) t)
+    [(State (? valid-value? tst) env store (DoIfK thn els k-addr) t)
      (check-true (BoolValue? tst))
      (append (for/list ([k (set->list (lookup-store store k-addr))])
                (State thn env store (Cont-k k) (tick s)))
@@ -273,7 +275,7 @@
      (define new-k (SetK var k-addr))
      (list (State val env new-store (SetK var k-addr) (tick s)))]
     ; SetK
-    [(State val env store (SetK var k-addr) t)
+    [(State (? valid-value? val) env store (SetK var k-addr) t)
      ; TODO Just set the store? or need to join the set? need to reconsider.
      (define new-store (hash-set store (lookup-env env var) (set val)))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -285,7 +287,7 @@
      (define new-k (BeginK s2 k-addr))
      (list (State s1 env new-store new-k (tick s)))]
     ; BeginK: evaluate the second expression
-    [(State exp env store (BeginK s2 k-addr) t)
+    [(State (? valid-value? s1) env store (BeginK s2 k-addr) t)
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State s2 env store (Cont-k k) (tick s)))]
     ; Anything else
@@ -377,7 +379,6 @@
 ;(aval (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
 ;(aval (parse '{lambda {x} x}))
-;(aval (parse '{lambda {x} x}))
 ;(aval (parse 3))
 ;(aval (parse 'true))
 ;(aval (parse 'false))
@@ -417,6 +418,7 @@
 
 ;(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
 
+#;
 (define s13 (aval (parse '{let {{fact {void}}}
                             {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}
                                    {fact 5}}})))
