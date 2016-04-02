@@ -52,13 +52,18 @@
 (struct Callsite (label k) #:transparent)
 (struct ArrowType (arg ret) #:transparent)
 
+(define (atomic-value? v)
+  (match v
+    [(? IntValue?) #t]
+    [(? BoolValue?) #t]
+    [(? VoidValue?) #t]
+    [_ #f]))
+
 (define (valid-value? v)
   (match v
     [(? Lam?) #t] ;TODO reconsider
     ;[(? Clo?) #t]
-    [(? IntValue?) #t]
-    [(? BoolValue?) #t]
-    [(? VoidValue?) #t]
+    [(? atomic-value?) #t]
     [_ #f]))
 
 ; Env : var -> addr
@@ -154,6 +159,18 @@
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
+    [(State (NumEq l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (NumEq r env new-store k-addr))
+     (list (State r env new-store new-k (tick s)))]
+    [(State l env store (NumEqK r r-env r-store k-addr) t)
+     (check-true (IntValue? l))
+     (list (State r r-env r-store (DoNumEqK l k-addr) (tick s)))]
+    [(State r env store (DoNumEqK l k-addr) t)
+     (check-true (IntValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+       (State (BoolValue) env store (Cont-k k) (tick s)))]
     ; Logic and
     ; TODO logic operation actually allows non-boolean values
     [(State (And l r) env store k t)
