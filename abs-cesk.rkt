@@ -417,8 +417,11 @@
 
 ;(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
 
-;(define s13 (aval (parse '{let {{fact {void}}}
-;                            {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}}})))
+(define s13 (aval (parse '{let {{fact {void}}}
+                            {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}
+                                   {fact 5}}})))
+
+;(aval (parse '{letrec {{fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}} {fact 5}}))
 
 ;(define s14 (aval (parse '{if {= 1 2} 2 3})))
 
