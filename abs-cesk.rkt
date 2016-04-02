@@ -50,12 +50,13 @@
 (struct Callsite (label k) #:transparent)
 (struct ArrowType (arg ret) #:transparent)
 
-(define (isPrimitive? v)
+(define (valid-value? v)
   (match v
     [(? Lam?) #t]
-    [(? Clo?) #t]
+    ;[(? Clo?) #t]
     [(? IntValue?) #t]
     [(? BoolValue?) #t]
+    [(? VoidValue?) #t]
     [_ #f]))
 
 ; Env : var -> addr
@@ -95,11 +96,12 @@
 ; step : state -> [state]
 (define (step s)
   (if (and (hash-has-key? k2call (State-kont s))
-           (isPrimitive? (State-exp s)))
+           (valid-value? (State-exp s)))
       (let* ([label (hash-ref k2call (State-kont s))]
              [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
         (hash-set! call2type (Callsite label (State-kont s))
                    (ArrowType (ArrowType-arg cur-type)
+                              ; Note: the actual return value is Closure if the (State-exp s) is a Lambda
                               (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
         (void))
   (match s
