@@ -16,6 +16,8 @@
 (struct Int () #:transparent)
 (struct Bool () #:transparent)
 (struct Plus (lhs rhs) #:transparent)
+(struct Minus (lhs rhs) #:transparent)
+(struct Mult (lhs rhs) #:transparent)
 (struct And (lhs rhs) #:transparent)
 (struct Or (lhs rhs) #:transparent)
 (struct Not (bl) #:transparent)
@@ -31,6 +33,10 @@
 (struct AppK (lam env addr) #:transparent)
 (struct PlusK (r env store addr) #:transparent)
 (struct DoPlusK (l addr) #:transparent)
+(struct MinusK (r env store addr) #:transparent)
+(struct DoMinusK (l addr) #:transparent)
+(struct MultK (r env store addr) #:transparent)
+(struct DoMultK (l addr) #:transparent)
 (struct AndK (r env store addr) #:transparent)
 (struct DoAndK (l addr) #:transparent)
 (struct OrK (r env store addr) #:transparent)
@@ -159,6 +165,36 @@
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
+    ; Minus
+    [(State (Minus l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (MinusK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    ; Minus: evaluate left hand side
+    [(State l env store (MinusK r r-env r-store k-addr) t)
+     (check-true (IntValue? l))
+     (list (State r r-env r-store (DoMinusK l k-addr) (tick s)))]
+    ; Minus: evaluate right hand side
+    [(State r env store (DoMinusK l k-addr) t)
+     (check-true (IntValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (IntValue) env store (Cont-k k) (tick s)))]
+    ; Mult
+    [(State (Mult l r) env store k t)
+     (define k-addr (alloc s))
+     (define new-store (ext-store store k-addr (Cont k)))
+     (define new-k (MultK r env new-store k-addr))
+     (list (State l env new-store new-k (tick s)))]
+    ; Mult: evaluate left hand side
+    [(State l env store (MultK r r-env r-store k-addr) t)
+     (check-true (IntValue? l))
+     (list (State r r-env r-store (DoMultK l k-addr) (tick s)))]
+    ; Mult: evaluate right hand side
+    [(State r env store (DoMultK l k-addr) t)
+     (check-true (IntValue? r))
+     (for/list ([k (set->list (lookup-store store k-addr))])
+        (State (IntValue) env store (Cont-k k) (tick s)))]
     [(State (NumEq l r) env store k t)
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
@@ -283,6 +319,8 @@
     [(? integer?) (Int)]
     [(? symbol?) (Var exp)]
     [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
+    [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
+    [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
     [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
     [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
     [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
