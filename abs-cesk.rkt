@@ -1,6 +1,8 @@
 #lang racket
 
 ; FIXME (aval (parse '{or {not true} false}))
+;       (aval (parse '{+ {if true 1 2} 3}))
+;       Make sure the exp is valid value, NOT a computation structure
 ; TODO NumEq
 
 (require rackunit)
@@ -40,7 +42,7 @@
 (struct NumEqK (r env store addr) #:transparent)
 (struct DoNumEqK (l addr) #:transparent)
 
-; Storable
+; Storable / Value
 (struct Clo (lam env) #:transparent)
 (struct Cont (k) #:transparent)
 (struct IntValue () #:transparent)
