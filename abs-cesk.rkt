@@ -3,7 +3,7 @@
 ; FIXME (aval (parse '{or {not true} false}))
 ;       (aval (parse '{+ {if true 1 2} 3}))
 ;       Make sure the exp is valid value, NOT a computation structure
-; TODO NumEq
+; TODO add test cases
 
 (require rackunit)
 
