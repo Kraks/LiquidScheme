@@ -162,7 +162,7 @@
     [(State (NumEq l r) env store k t)
      (define k-addr (alloc s))
      (define new-store (ext-store store k-addr (Cont k)))
-     (define new-k (NumEq r env new-store k-addr))
+     (define new-k (NumEqK r env new-store k-addr))
      (list (State r env new-store new-k (tick s)))]
     [(State l env store (NumEqK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
@@ -380,7 +380,9 @@
 ;(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
 
 ;(define s13 (aval (parse '{let {{fact {void}}}
-;                            {begin {set! fact {lambda {n} {if {
+;                            {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}}})))
+
+;(define s14 (aval (parse '{if {= 1 2} 2 3})))
 
 (hash-for-each call2type
                (λ (key type)
