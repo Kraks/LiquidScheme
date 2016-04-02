@@ -265,22 +265,14 @@
     ['(void) (Void)]
     [(? integer?) (Int)]
     [(? symbol?) (Var exp)]
-    [`(+ ,lhs ,rhs)
-     (Plus (parse lhs) (parse rhs))]
-    [`(= ,lhs ,rhs)
-     (NumEq (parse lhs) (parse rhs))]
-    [`(and ,lhs ,rhs)
-     (And (parse lhs) (parse rhs))]
-    [`(or ,lhs ,rhs)
-     (Or (parse lhs) (parse rhs))]
-    [`(not ,bl)
-     (Not (parse bl))]
-    [`(set! ,var ,val)
-     (Set var (parse val))]
-    [`(if ,tst ,thn ,els)
-     (If (parse tst) (parse thn) (parse els))]
-    [`(begin ,s1 ,s2)
-     (Begin (parse s1) (parse s2))]
+    [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
+    [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
+    [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
+    [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
+    [`(not ,bl) (Not (parse bl))]
+    [`(set! ,var ,val) (Set var (parse val))]
+    [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
+    [`(begin ,s1 ,s2) (Begin (parse s1) (parse s2))]
     [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
     [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
