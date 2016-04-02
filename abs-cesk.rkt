@@ -54,7 +54,7 @@
 
 (define (valid-value? v)
   (match v
-    [(? Lam?) #t]
+    [(? Lam?) #t] ;TODO reconsider
     ;[(? Clo?) #t]
     [(? IntValue?) #t]
     [(? BoolValue?) #t]
@@ -62,7 +62,6 @@
     [_ #f]))
 
 ; Env : var -> addr
-
 ; lookup-env env var
 (define lookup-env hash-ref)
 ; ext-env env var addr
@@ -70,7 +69,6 @@
 (define mt-env (make-immutable-hash))
 
 ; Store : addr -> Set(value)
-
 ; lookup-store : store addr -> Set(value)
 (define (lookup-store store addr)
   (if (hash-has-key? store addr)
@@ -103,7 +101,7 @@
              [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
         (hash-set! call2type (Callsite label (State-kont s))
                    (ArrowType (ArrowType-arg cur-type)
-                              ; Note: the actual return value is Closure if the (State-exp s) is a Lambda
+                              ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
                               (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
         (void))
   (match s
