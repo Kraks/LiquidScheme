@@ -60,13 +60,10 @@
 (struct BAddr (var time) #:transparent)
 (struct KAddr (exp time) #:transparent)
 
-(define k 0)
-
-(define (alloc s)
-  (+ 1 (foldl max 0 (hash-keys (State-store s)))))
+(define k (make-parameter 0))
 
 (define (tick s)
-  (take (cons (State-exp s) (State-time s)) k))
+  (take (cons (State-exp s) (State-time s)) (k)))
 
 (struct Callsite (label k) #:transparent)
 (struct ArrowType (arg ret) #:transparent)
