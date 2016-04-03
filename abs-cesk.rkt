@@ -56,8 +56,25 @@
 (struct BoolValue () #:transparent)
 (struct VoidValue () #:transparent)
 
+; Address
+(struct BAddr (var time) #:transparent)
+(struct KAddr (exp time) #:transparent)
+
+(define k 0)
+
+(define (alloc s)
+  (+ 1 (foldl max 0 (hash-keys (State-store s)))))
+
+(define (tick s)
+  (take (cons (State-exp s) (State-time s)) k))
+
 (struct Callsite (label k) #:transparent)
 (struct ArrowType (arg ret) #:transparent)
+
+; Callsite -> list
+(define call2type (make-hash))
+; Cont -> label
+(define k2call (make-hash))
 
 (define (atomic-value? v)
   (match v
@@ -69,7 +86,6 @@
 (define (valid-value? v)
   (match v
     [(? Lam?) #t] ;TODO reconsider
-    ;[(? Clo?) #t]
     [(? atomic-value?) #t]
     [_ #f]))
 
@@ -94,20 +110,10 @@
       (hash-set store addr (set val))))
 (define mt-store (make-immutable-hash))
 
-(define (alloc s)
-  (+ 1 (foldl max 0 (hash-keys (State-store s)))))
-
-(define (tick s)
-  (+ 1 (State-time s)))
-
-; Callsite -> list
-(define call2type (make-hash))
-; Cont -> label
-(define k2call (make-hash))
-
 ; step : state -> [state]
 (define (step s)
-  (displayln s)
+  ;(displayln s)
+  ;(displayln "")
   (if (and (hash-has-key? k2call (State-kont s))
            (valid-value? (State-exp s)))
       (let* ([label (hash-ref k2call (State-kont s))]
@@ -134,7 +140,7 @@
              [else (State val env store k (tick s))]))]
     ; Application
     [(State (App fun arg) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (App fun arg) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (ArgK arg env k-addr))
      (list (State fun env new-store new-k (tick s)))]
@@ -142,11 +148,11 @@
     [(State (Lam label var exp) env store (ArgK e k-env k-addr) t)
      (list (State e k-env store (AppK (Lam label var exp) env k-addr) (tick s)))]
     ; Application: evaluate callee and into the body of function
-    [(State exp env store (AppK (Lam label x e) k-env k-addr) t)
+    [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
      (define val
        (cond [(Lam? exp) (Clo exp env)]
              [else exp]))
-     (define v-addr (alloc s))
+     (define v-addr (BAddr x t))
      (for/list ([k (set->list (lookup-store store k-addr))])
        ; save argument type info and callsite info
        (hash-set! k2call (Cont-k k) label)
@@ -154,7 +160,7 @@
        (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
     ; Plus
     [(State (Plus l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Plus l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (PlusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
@@ -169,7 +175,7 @@
         (State (IntValue) env store (Cont-k k) (tick s)))]
     ; Minus
     [(State (Minus l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Minus l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (MinusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
@@ -184,7 +190,7 @@
         (State (IntValue) env store (Cont-k k) (tick s)))]
     ; Mult
     [(State (Mult l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Mult l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (MultK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
@@ -198,7 +204,7 @@
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
     [(State (NumEq l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (NumEq l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (NumEqK r env new-store k-addr))
      (list (State r env new-store new-k (tick s)))]
@@ -212,7 +218,7 @@
     ; Logic and
     ; TODO logic operation actually allows non-boolean values
     [(State (And l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (And l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (AndK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
@@ -229,7 +235,7 @@
         (State (BoolValue) env store (Cont-k k) (tick s)))]
     ; Logic or
     [(State (Or l r) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Or l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (OrK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
@@ -245,19 +251,19 @@
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
     ; Logic not
-    [(State (Not bl) env store k t)
-     (define k-addr (alloc s))
+    [(State (Not b) env store k t)
+     (define k-addr (KAddr (Not b) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (DoNotK k-addr))
-     (list (State bl env new-store new-k (tick s)))]
+     (list (State b env new-store new-k (tick s)))]
     ; Logic not: evaluate the expr
-    [(State (? valid-value? bl) env store (DoNotK k-addr) t)
-     (check-true (BoolValue? bl))
+    [(State (? valid-value? b) env store (DoNotK k-addr) t)
+     (check-true (BoolValue? b))
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State (BoolValue) env store (Cont-k k) (tick s)))]
     ; If
     [(State (If tst thn els) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (If tst thn els) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (DoIfK thn els k-addr))
      (list (State tst env new-store new-k (tick s)))]
@@ -270,7 +276,7 @@
                (State els env store (Cont-k k) (tick s))))]
     ; Set!
     [(State (Set var val) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Set var val) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (SetK var k-addr))
      (list (State val env new-store (SetK var k-addr) (tick s)))]
@@ -282,7 +288,7 @@
        (State (VoidValue) env new-store (Cont-k k) (tick s)))]
     ; Begin
     [(State (Begin s1 s2) env store k t)
-     (define k-addr (alloc s))
+     (define k-addr (KAddr (Begin s1 s2) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (BeginK s2 k-addr))
      (list (State s1 env new-store new-k (tick s)))]
@@ -294,7 +300,7 @@
     [s (list s)]))
 
 (define (inject e)
-  (State e mt-env mt-store (DoneK) 0))
+  (State e mt-env mt-store (DoneK) '()))
 
 (define (explore f s)
   (search f (set) (list s)))
@@ -311,7 +317,7 @@
 
 ; exp -> [state]
 (define (aval e)
-  (sort-state-set (explore step (inject e))))
+ (explore step (inject e)))
 
 (define (parse exp)
   (match exp
@@ -348,8 +354,8 @@
     [(BoolValue) "bool"]
     [(IntValue) "int"]
     [(VoidValue) "void"]
-    [(Lam label arg body)
-     (arrow-type->string (find-lambda-type label))]
+    [(Lam label arg body) (string-append "lambda " (symbol->string label))]
+     ;(arrow-type->string (find-lambda-type label))]
     [_ (error 'primitve->string "not primitive type")]))
 
 (define (arrow-type->string t)
@@ -397,8 +403,8 @@
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
                                fls}}})))
-
-;(define s4 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
+#;
+(define s4 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
 
 #;
 (define s6 (aval (parse '{let {[f {lambda id {x} x}]}
@@ -416,9 +422,9 @@
                             {begin {set! a true}
                                    a}})))
 
-;(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
-
 #;
+(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
+
 (define s13 (aval (parse '{let {{fact {void}}}
                             {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}
                                    {fact 5}}})))
