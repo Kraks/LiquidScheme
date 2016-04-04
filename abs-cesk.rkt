@@ -4,6 +4,10 @@
 
 (require rackunit)
 
+(provide parse
+         aval
+         aval-infer)
+
 (struct State (exp env store kont time) #:transparent)
 
 ; Exp
@@ -323,27 +327,28 @@
  (let-values ([(states cont2type call2type) (explore step (inject e))])
    states))
 
-; TODO: may has multiple
-;(define (find-lambda-type label)
-;  (first (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type)))))
+; TODO: may has multiple instance with different cont in call2type hashtable
+(define (find-lambda-type label call2type)
+  (first (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type)))))
 
-(define (primitive->string t)
+(define (primitive->string t call2type)
   (match t
     [(BoolValue) "bool"]
     [(IntValue) "int"]
     [(VoidValue) "void"]
-    [(Lam label arg body) (string-append "lambda " (symbol->string label))]
-     ;(arrow-type->string (find-lambda-type label))]
+    [(Lam label arg body)
+     ;(string-append "lambda " (symbol->string label))]
+     (arrow-type->string (find-lambda-type label call2type) call2type)]
     [_ (error 'primitve->string "not primitive type")]))
 
-(define (arrow-type->string t)
+(define (arrow-type->string t call2type)
   (match t
     [(ArrowType arg ret)
-     (string-append (primitive->string arg)
+     (string-append (primitive->string arg call2type)
                     " -> "
                     (if (= 1 (set-count ret))
-                        (primitive->string (set-first ret))
-                        (string-append "(" (string-join (set-map ret primitive->string)) ")")))]))
+                        (primitive->string (set-first ret) call2type)
+                        (string-append "(" (string-join (set-map ret (λ (t) (primitive->string t call2type)))) ")")))]))
 
 ; TODO: can be remove
 (define (sort-state-set states)
@@ -358,7 +363,7 @@
                  (λ (key type)
                    (let ([label (Callsite-label key)])
                      (if (not (string-prefix? (symbol->string label) "let"))
-                         (printf "~a has type: ~a\n" (Callsite-label key) (arrow-type->string type))
+                         (printf "~a has type: ~a\n" (Callsite-label key) (arrow-type->string type call2type))
                          (void))))))
 
 (define (parse exp)
@@ -394,64 +399,3 @@
                 (hash 1 (set 'a 'b)))
   (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
                 (hash 1 (set 'a 'b) 2 (set 'c))))
-
-;(parse '{{lambda {x} x} {lambda {y} y}})
-;(parse '{let ([x 1]) x})
-;(aval (App (Lam "x" (Var "x")) (Lam "y" (Var "y"))))
-;(aval (Lam "x" (Var "x")))
-;(aval (parse '{if true 3 4}))
-;(aval (parse '{if true 3 false}))
-
-;(aval (parse '{{lambda {x} x} {lambda {y} y}}))
-;(aval (parse '{{lambda fz {z} z} {{lambda fx {x} x} {lambda fy {y} y}}}))
-;(aval (parse '{lambda {x} x}))
-;(aval (parse 3))
-;(aval (parse 'true))
-;(aval (parse 'false))
-
-;(aval (parse '{+ 1 2}))
-;(aval (parse '{{lambda {x} x} 1}))
-;(aval (parse '{and true false}))
-;(aval (parse '{or true false}))
-;(aval (parse '{not true}))
-
-;(define s1 (aval (parse '{+ 1 {{lambda add1 {x} {+ x 1}} 2}})))
-;(define s2 (aval (parse '{+ {{lambda add2 {x} {+ x 2}} 2} 2})))
-
-#;
-(define s3 (aval (parse '{let {[id {lambda id {x} x}]}
-                           {let {[one {id 1}]}
-                             {let {[fls {not {id true}}]}
-                               fls}}})))
-#;
-(define s4 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
-
-#;
-(define s6 (aval (parse '{let {[f {lambda id {x} x}]}
-                           {f 1}})))
-
-;(define s7 (aval (parse '{{lambda intorbool {x} {if x 2 true}} false})))
-
-;(define s8 (aval (parse '{{lambda {x} {not x}} true})))
-
-;(define s9 (aval (parse '{{{{lambda {x} {lambda {i} {lambda {j} {if x i j}}}} true} 1} 2})))
-;(define s10 (aval (parse '{begin {+ 1 2} {+ 3 4}})))
-
-;(aval (parse '{or {not true} false}))
-;(aval (parse '{+ {if true 1 2} 3}))
-
-#;
-(define s11 (aval (parse '{let {{a 1}}
-                            {begin {set! a true}
-                                   a}})))
-
-#;
-(define s12 (aval (parse '{letrec {{a {lambda {x} a}}} a})))
-
-(define s13 (aval (parse '{let {{fact {void}}}
-                                   {begin {set! fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}
-                                          {fact 5}}})))
-
-;(aval (parse '{letrec {{fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}} {fact 5}}))
-
-;(define s14 (aval (parse '{if {= 1 2} 2 3})))
