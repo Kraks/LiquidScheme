@@ -109,8 +109,6 @@
 
 ; step : state -> [state]
 (define (step s)
-  ;(displayln s)
-  ;(displayln "")
   (if (and (hash-has-key? k2call (State-kont s))
            (valid-value? (State-exp s)))
       (let* ([label (hash-ref k2call (State-kont s))]
@@ -119,7 +117,7 @@
                    (ArrowType (ArrowType-arg cur-type)
                               ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
                               (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
-        (void))
+      (void))
   (match s
     ; Int
     [(State (Int) env store k t)
@@ -161,11 +159,11 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (PlusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
-    ; Plus: evaluate left hand side
+    ; Plus: after evaluate left hand side
     [(State (? valid-value? l) env store (PlusK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoPlusK l k-addr) (tick s)))]
-    ; Plus: evaluate right hand side
+    ; Plus: after evaluate right hand side
     [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -176,11 +174,11 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (MinusK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
-    ; Minus: evaluate left hand side
+    ; Minus: after evaluate left hand side
     [(State (? valid-value? l) env store (MinusK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoMinusK l k-addr) (tick s)))]
-    ; Minus: evaluate right hand side
+    ; Minus: after evaluate right hand side
     [(State (? valid-value? r) env store (DoMinusK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -191,23 +189,26 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (MultK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
-    ; Mult: evaluate left hand side
+    ; Mult: after evaluate left hand side
     [(State (? valid-value? l) env store (MultK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoMultK l k-addr) (tick s)))]
-    ; Mult: evaluate right hand side
+    ; Mult: after evaluate right hand side
     [(State (? valid-value? r) env store (DoMultK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
         (State (IntValue) env store (Cont-k k) (tick s)))]
+    ; NumEq
     [(State (NumEq l r) env store k t)
      (define k-addr (KAddr (NumEq l r) t))
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (NumEqK r env new-store k-addr))
      (list (State r env new-store new-k (tick s)))]
+    ; NumEq: after evaluate left hand side
     [(State (? valid-value? l) env store (NumEqK r r-env r-store k-addr) t)
      (check-true (IntValue? l))
      (list (State r r-env r-store (DoNumEqK l k-addr) (tick s)))]
+    ; NumEq: after evaluate right hand side
     [(State (? valid-value? r) env store (DoNumEqK l k-addr) t)
      (check-true (IntValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -219,13 +220,13 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (AndK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
-    ; Logic and: evaluate left hand side
+    ; Logic and: after evaluate left hand side
     [(State (? valid-value? l) env store (AndK r r-env r-store k-addr) t)
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
              (State (BoolValue) env store (Cont-k k) (tick s))))]
-    ; Logic and: evaluate right hand side
+    ; Logic and: after evaluate right hand side
     [(State (? valid-value? r) env store (DoAndK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -236,13 +237,13 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (OrK r env new-store k-addr))
      (list (State l env new-store new-k (tick s)))]
-    ; Logic or: evaluate left hand side
+    ; Logic or: after evaluate left hand side
     [(State (? valid-value? l) env store (OrK r r-env r-store k-addr) t)
      (check-true (BoolValue? l))
      (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
            (for/list ([k (set->list (lookup-store store k-addr))])
              (State (BoolValue) env store (Cont-k k) (tick s))))]
-    ; Logic or: evaluate right hand side
+    ; Logic or: after evaluate right hand side
     [(State (? valid-value? r) env store (DoOrK l k-addr) t)
      (check-true (BoolValue? r))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -253,7 +254,7 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (DoNotK k-addr))
      (list (State b env new-store new-k (tick s)))]
-    ; Logic not: evaluate the expr
+    ; Logic not: after evaluate the expr
     [(State (? valid-value? b) env store (DoNotK k-addr) t)
      (check-true (BoolValue? b))
      (for/list ([k (set->list (lookup-store store k-addr))])
@@ -264,7 +265,7 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (DoIfK thn els k-addr))
      (list (State tst env new-store new-k (tick s)))]
-    ; If: evaluate test
+    ; If: after evaluate the condition
     [(State (? valid-value? tst) env store (DoIfK thn els k-addr) t)
      (check-true (BoolValue? tst))
      (append (for/list ([k (set->list (lookup-store store k-addr))])
@@ -289,7 +290,7 @@
      (define new-store (ext-store store k-addr (Cont k)))
      (define new-k (BeginK s2 k-addr))
      (list (State s1 env new-store new-k (tick s)))]
-    ; BeginK: evaluate the second expression
+    ; BeginK: after evaluate the first expression
     [(State (? valid-value? s1) env store (BeginK s2 k-addr) t)
      (for/list ([k (set->list (lookup-store store k-addr))])
        (State s2 env store (Cont-k k) (tick s)))]
