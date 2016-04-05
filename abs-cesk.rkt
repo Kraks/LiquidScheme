@@ -43,7 +43,7 @@
 (struct OrK (r env store addr) #:transparent)
 (struct DoOrK (l addr) #:transparent)
 (struct DoNotK (addr) #:transparent)
-(struct DoIfK (thn els addr) #:transparent)
+(struct DoIfK (thn els env addr) #:transparent)
 (struct SetK (var addr) #:transparent)
 (struct BeginK (s2 addr) #:transparent)
 (struct NumEqK (r env store addr) #:transparent)
@@ -255,15 +255,14 @@
       [(State (If tst thn els) env store k t)
        (define k-addr (KAddr (If tst thn els) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (DoIfK thn els k-addr))
+       (define new-k (DoIfK thn els env k-addr))
        (list (State tst env new-store new-k (tick s)))]
       ; If: after evaluate the condition
-      [(State (? valid-value? tst) env store (DoIfK thn els k-addr) t)
+      [(State (? valid-value? tst) env store (DoIfK thn els k-env k-addr) t)
        (check-true (BoolValue? tst))
-       (append (for/list ([k (set->list (lookup-store store k-addr))])
-                 (State thn env store (Cont-k k) (tick s)))
-               (for/list ([k (set->list (lookup-store store k-addr))])
-                 (State els env store (Cont-k k) (tick s))))]
+       (define ks (set->list (lookup-store store k-addr)))
+       (append (for/list ([k ks]) (State thn k-env store (Cont-k k) (tick s)))
+               (for/list ([k ks]) (State els k-env store (Cont-k k) (tick s))))]
       ; Set!
       [(State (Set var val) env store k t)
        (define k-addr (KAddr (Set var val) t))

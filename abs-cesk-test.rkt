@@ -75,9 +75,9 @@
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
                       {fib 5}}))
 
-;(aval-infer fact1)
+(aval-infer fact1)
 ;(aval-infer fact2)
-(aval fib)
+;(aval fib)
 
 ; If using 0-CFA, this test case will get wrong.
 #;
