@@ -30,6 +30,7 @@
                            {let {[one {id 1}]}
                              {let {[fls {not {id true}}]}
                                fls}}})))
+
 #;
 (define s4 (aval (parse '{{{lambda {x} {lambda {y} {and x y}}} true} false})))
 
@@ -64,6 +65,7 @@
 (define fact2 (parse '{letrec {{fact {lambda fact {n} {if {= n 0} 1 {* n {fact {- n 1}}}}}}}
                         {fact 5}}))
 
+; TODO
 (define fib (parse '{letrec {{fib {lambda fib {n} {if {= n 1}
                                                       1
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
@@ -71,3 +73,10 @@
 
 ;(aval-infer fact1)
 ;(aval-infer fact2)
+;(aval fib)
+
+; If using 0-CFA, this test case will get wrong.
+(aval-infer (parse '{let {[id {lambda id {x} x}]}
+                      {let {[one {id 1}]}
+                        {let {[fls {not {id true}}]}
+                          fls}}}))

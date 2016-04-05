@@ -60,8 +60,8 @@
 (struct BAddr (var time) #:transparent)
 (struct KAddr (exp time) #:transparent)
 
-; Currently using 0-CFA
-(define k (make-parameter 0))
+; Currently using 1-CFA
+(define k (make-parameter 1))
 
 (define (tick s)
   (take (cons (State-exp s) (State-time s)) (k)))
@@ -105,6 +105,8 @@
 
 ; step : state hashtable hashtable -> ([state] hashtable hashtable)
 (define (step s cont2label call2type)
+  ;(displayln s)
+  ;(displayln "")
   (define nexts
     (match s
       ; Int
@@ -266,7 +268,7 @@
        (list (State val env new-store (SetK var k-addr) (tick s)))]
       ; SetK
       [(State (? valid-value? val) env store (SetK var k-addr) t)
-       ; TODO Just set the store? or need to join the set? need to reconsider.
+       ; TODO Just set the store? or need to join the range set? need to reconsider.
        (define new-store (hash-set store (lookup-env env var) (set val)))
        (for/list ([k (set->list (lookup-store store k-addr))])
          (State (VoidValue) env new-store (Cont-k k) (tick s)))]
