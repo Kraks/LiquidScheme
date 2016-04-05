@@ -63,11 +63,15 @@
 ; Currently using 1-CFA
 (define k (make-parameter 1))
 
+; A callsite is consiste of the label of function
+; and the continuation where the function returns to.
+(struct Callsite (label k) #:transparent)
+
+; ArrowType is function type.
+(struct ArrowType (arg ret) #:transparent)
+
 (define (tick s)
   (take (cons (State-exp s) (State-time s)) (k)))
-
-(struct Callsite (label k) #:transparent)
-(struct ArrowType (arg ret) #:transparent)
 
 (define (atomic-value? v)
   (match v
@@ -78,7 +82,7 @@
 
 (define (valid-value? v)
   (match v
-    [(? Lam?) #t] ;TODO reconsider
+    [(? Lam?) #t]
     [(? atomic-value?) #t]
     [_ #f]))
 
@@ -284,6 +288,7 @@
          (State s2 env store (Cont-k k) (tick s)))]
       ; Anything else
       [s (list s)]))
+  
   ; If the current continuation we have saved in the cont2label, which means
   ; now it finished eval the body of a function and will return to that continuation,
   ; then we put the (State-exp s) as the return type of function and save to hash table.
@@ -296,14 +301,16 @@
                               ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
                               (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
       (void))
+  
   ; If we see an AppK continuation, then it will go into the function body
-  ; so we save argument type info and where it will return to
+  ; so we save argument type info and where it will return to.
   (match s
     [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
      (for/list ([k (set->list (lookup-store store k-addr))])
        (hash-set! cont2label (Cont-k k) label)
        (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set))))]
     [_ (void)])
+  
   ; return next states, cont2label and call2type
   (values nexts cont2label call2type))
 
