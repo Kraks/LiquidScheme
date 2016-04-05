@@ -1,5 +1,7 @@
 #lang racket
 
+; TODO regard all non-false values as true
+; TODO callcc
 ; TODO add test cases
 
 (require rackunit)
