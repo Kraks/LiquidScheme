@@ -336,9 +336,8 @@
  (let-values ([(states cont2type call2type) (explore step (inject e))])
    states))
 
-; TODO: may has multiple instance with different cont in call2type hashtable
 (define (find-lambda-type label call2type)
-  (first (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type)))))
+  (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type))))
 
 (define (primitive->string t call2type)
   (match t
@@ -346,8 +345,11 @@
     [(IntValue) "int"]
     [(VoidValue) "void"]
     [(Lam label arg body)
-     ;(string-append "lambda " (symbol->string label))]
-     (arrow-type->string (find-lambda-type label call2type) call2type)]
+     (let ([lambda-types (find-lambda-type label call2type)])
+       (if (null? lambda-types) (string-append "lambda " (symbol->string label))
+           ; TODO: may has multiple instance with different cont in call2type hashtable
+           ; now only take the first one.
+           (arrow-type->string (first lambda-types) call2type)))]
     [_ (error 'primitve->string "not primitive type")]))
 
 (define (arrow-type->string t call2type)
