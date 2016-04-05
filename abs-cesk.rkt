@@ -32,21 +32,21 @@
 (struct DoneK () #:transparent)
 (struct ArgK (exp env addr) #:transparent)
 (struct AppK (lam env addr) #:transparent)
-(struct PlusK (r env store addr) #:transparent)
+(struct PlusK (r env addr) #:transparent)
 (struct DoPlusK (l addr) #:transparent)
-(struct MinusK (r env store addr) #:transparent)
+(struct MinusK (r env addr) #:transparent)
 (struct DoMinusK (l addr) #:transparent)
-(struct MultK (r env store addr) #:transparent)
+(struct MultK (r env addr) #:transparent)
 (struct DoMultK (l addr) #:transparent)
-(struct AndK (r env store addr) #:transparent)
+(struct AndK (r env addr) #:transparent)
 (struct DoAndK (l addr) #:transparent)
-(struct OrK (r env store addr) #:transparent)
+(struct OrK (r env addr) #:transparent)
 (struct DoOrK (l addr) #:transparent)
 (struct DoNotK (addr) #:transparent)
 (struct DoIfK (thn els env addr) #:transparent)
 (struct SetK (var addr) #:transparent)
 (struct BeginK (s2 addr) #:transparent)
-(struct NumEqK (r env store addr) #:transparent)
+(struct NumEqK (r env addr) #:transparent)
 (struct DoNumEqK (l addr) #:transparent)
 
 ; Storable / Value
@@ -149,12 +149,12 @@
       [(State (Plus l r) env store k t)
        (define k-addr (KAddr (Plus l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (PlusK r env new-store k-addr))
+       (define new-k (PlusK r env k-addr))
        (list (State l env new-store new-k (tick s)))]
       ; Plus: after evaluate left hand side
-      [(State (? valid-value? l) env store (PlusK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (PlusK r r-env k-addr) t)
        (check-true (IntValue? l))
-       (list (State r r-env r-store (DoPlusK l k-addr) (tick s)))]
+       (list (State r r-env store (DoPlusK l k-addr) (tick s)))]
       ; Plus: after evaluate right hand side
       [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
        (check-true (IntValue? r))
@@ -164,12 +164,12 @@
       [(State (Minus l r) env store k t)
        (define k-addr (KAddr (Minus l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (MinusK r env new-store k-addr))
+       (define new-k (MinusK r env k-addr))
        (list (State l env new-store new-k (tick s)))]
       ; Minus: after evaluate left hand side
-      [(State (? valid-value? l) env store (MinusK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (MinusK r r-env k-addr) t)
        (check-true (IntValue? l))
-       (list (State r r-env r-store (DoMinusK l k-addr) (tick s)))]
+       (list (State r r-env store (DoMinusK l k-addr) (tick s)))]
       ; Minus: after evaluate right hand side
       [(State (? valid-value? r) env store (DoMinusK l k-addr) t)
        (check-true (IntValue? r))
@@ -179,12 +179,12 @@
       [(State (Mult l r) env store k t)
        (define k-addr (KAddr (Mult l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (MultK r env new-store k-addr))
+       (define new-k (MultK r env k-addr))
        (list (State l env new-store new-k (tick s)))]
       ; Mult: after evaluate left hand side
-      [(State (? valid-value? l) env store (MultK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (MultK r r-env k-addr) t)
        (check-true (IntValue? l))
-       (list (State r r-env r-store (DoMultK l k-addr) (tick s)))]
+       (list (State r r-env store (DoMultK l k-addr) (tick s)))]
       ; Mult: after evaluate right hand side
       [(State (? valid-value? r) env store (DoMultK l k-addr) t)
        (check-true (IntValue? r))
@@ -194,12 +194,12 @@
       [(State (NumEq l r) env store k t)
        (define k-addr (KAddr (NumEq l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (NumEqK r env new-store k-addr))
+       (define new-k (NumEqK r env k-addr))
        (list (State r env new-store new-k (tick s)))]
       ; NumEq: after evaluate left hand side
-      [(State (? valid-value? l) env store (NumEqK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (NumEqK r r-env k-addr) t)
        (check-true (IntValue? l))
-       (list (State r r-env r-store (DoNumEqK l k-addr) (tick s)))]
+       (list (State r r-env store (DoNumEqK l k-addr) (tick s)))]
       ; NumEq: after evaluate right hand side
       [(State (? valid-value? r) env store (DoNumEqK l k-addr) t)
        (check-true (IntValue? r))
@@ -210,12 +210,12 @@
       [(State (And l r) env store k t)
        (define k-addr (KAddr (And l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (AndK r env new-store k-addr))
+       (define new-k (AndK r env k-addr))
        (list (State l env new-store new-k (tick s)))]
       ; Logic and: after evaluate left hand side
-      [(State (? valid-value? l) env store (AndK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (AndK r r-env k-addr) t)
        (check-true (BoolValue? l))
-       (cons (State r r-env r-store (DoAndK l k-addr) (tick s))
+       (cons (State r r-env store (DoAndK l k-addr) (tick s))
              (for/list ([k (set->list (lookup-store store k-addr))])
                (State (BoolValue) env store (Cont-k k) (tick s))))]
       ; Logic and: after evaluate right hand side
@@ -227,12 +227,12 @@
       [(State (Or l r) env store k t)
        (define k-addr (KAddr (Or l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
-       (define new-k (OrK r env new-store k-addr))
+       (define new-k (OrK r env k-addr))
        (list (State l env new-store new-k (tick s)))]
       ; Logic or: after evaluate left hand side
-      [(State (? valid-value? l) env store (OrK r r-env r-store k-addr) t)
+      [(State (? valid-value? l) env store (OrK r r-env k-addr) t)
        (check-true (BoolValue? l))
-       (cons (State r r-env r-store (DoOrK l k-addr) (tick s))
+       (cons (State r r-env store (DoOrK l k-addr) (tick s))
              (for/list ([k (set->list (lookup-store store k-addr))])
                (State (BoolValue) env store (Cont-k k) (tick s))))]
       ; Logic or: after evaluate right hand side
