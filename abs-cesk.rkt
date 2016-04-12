@@ -12,12 +12,29 @@
 
 (struct State (exp env store kont time) #:transparent)
 
+; Type
+(struct DefineType (name type))
+(struct TInt (pred))
+(struct TBool (pred))
+(struct TAny ())
+(struct TArrow (arg ret))
+(struct TIs (arrows))
+
+; Predicate
+(struct PSelf ())
+(struct PId (name))
+(struct PGreater (l r))
+(struct PEqual (l r))
+(struct PAnd (l r))
+(struct POr (l r))
+(struct PNot (b))
+
 ; Exp
 (struct Var (name) #:transparent)
 (struct Lam (label var exp) #:transparent)
 (struct App (fun arg) #:transparent)
-(struct Int () #:transparent)
-(struct Bool () #:transparent)
+(struct Int () #:transparent) ;pred
+(struct Bool () #:transparent) ;pred
 (struct Plus (lhs rhs) #:transparent)
 (struct Minus (lhs rhs) #:transparent)
 (struct Mult (lhs rhs) #:transparent)
@@ -29,6 +46,8 @@
 (struct Begin (s1 s2) #:transparent)
 (struct Void () #:transparent)
 (struct NumEq (lhs rhs) #:transparent)
+
+;;;;;;;;;;;;;;;;;;
 
 ; Continuation
 (struct DoneK () #:transparent)
@@ -54,8 +73,8 @@
 ; Storable / Value
 (struct Clo (lam env) #:transparent)
 (struct Cont (k) #:transparent)
-(struct IntValue () #:transparent)
-(struct BoolValue () #:transparent)
+(struct IntValue () #:transparent) ;pred
+(struct BoolValue () #:transparent) ;pred
 (struct VoidValue () #:transparent)
 
 ; Address
@@ -289,7 +308,7 @@
          (State s2 env store (Cont-k k) (tick s)))]
       ; Anything else
       [s (list s)]))
-  
+
   ; If the current continuation we have saved in the cont2label, which means
   ; now it finished eval the body of a function and will return to that continuation,
   ; then we put the (State-exp s) as the return type of function and save to hash table.
@@ -302,7 +321,7 @@
                               ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
                               (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
       (void))
-  
+
   ; If we see an AppK continuation, then it will go into the function body
   ; so we save argument type info and where it will return to.
   (match s
@@ -311,7 +330,7 @@
        (hash-set! cont2label (Cont-k k) label)
        (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set))))]
     [_ (void)])
-  
+
   ; return next states, cont2label and call2type
   (values nexts cont2label call2type))
 
@@ -371,12 +390,17 @@
     (extract-func-type cont2label call2type)))
 
 (define (extract-func-type cont2label call2type)
-  (hash-for-each call2type
-                 (λ (key type)
-                   (let ([label (Callsite-label key)])
-                     (if (not (string-prefix? (symbol->string label) "let"))
-                         (printf "~a has type: ~a\n" (Callsite-label key) (arrow-type->string type call2type))
-                         (void))))))
+  (hash-for-each
+   call2type
+   (λ (key type)
+     ;;;;;;
+     (printf "func: ~a \ncont: ~a \ntype: ~a\n" (Callsite-label key) (Callsite-k key) type)
+     (and (string-prefix? (symbol->string (Callsite-label key)) "let") (printf "\n"))
+     ;;;;;;
+     (let ([label (Callsite-label key)])
+       (if (not (string-prefix? (symbol->string label) "let"))
+           (printf "~a has type: ~a\n\n" label (arrow-type->string type call2type))
+           (void))))))
 
 (define (parse exp)
   (match exp

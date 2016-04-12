@@ -75,9 +75,12 @@
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
                       {fib 5}}))
 
-(aval-infer fact1)
+(define idid (parse '{{lambda {x} x} {lambda {y} y}}))
+;(aval-infer idid)
+
+;(aval-infer fact1)
 ;(aval-infer fact2)
-;(aval fib)
+(aval-infer fib)
 
 ; If using 0-CFA, this test case will get wrong.
 #;
