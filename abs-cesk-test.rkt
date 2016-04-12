@@ -63,24 +63,28 @@
                                                               1
                                                               {* n {fact {- n 1}}}}}}
                               {fact 5}}}))
+;(aval-infer fact1)
 
 (define fact2 (parse '{letrec {{fact {lambda fact {n} {if {= n 0}
                                                           1
-                                                          {* n {fact {- n 1}}}}}}}
+                                                          {* {fact {- n 1}} n}}}}}
                         {fact 5}}))
+;(aval-infer fact2)
 
-; TODO
+(define tozero (parse '{letrec {{tozero {lambda tozero {n} {if {= n 0} false
+                                                               {if {= n 1} 1
+                                                                   {tozero {- n 1}}}}}}}
+                         {tozero 5}}))
+;(aval-infer tozero)
+
 (define fib (parse '{letrec {{fib {lambda fib {n} {if {= n 1}
                                                       1
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
                       {fib 5}}))
+(aval-infer fib)
 
 (define idid (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval-infer idid)
-
-;(aval-infer fact1)
-;(aval-infer fact2)
-(aval-infer fib)
 
 ; If using 0-CFA, this test case will get wrong.
 #;

@@ -8,7 +8,8 @@
 
 (provide parse
          aval
-         aval-infer)
+         aval-infer
+         call2type)
 
 (struct State (exp env store kont time) #:transparent)
 
@@ -103,8 +104,8 @@
 
 (define (valid-value? v)
   (match v
-    [(? Lam?) #t]
     [(? atomic-value?) #t]
+    [(? Lam?) #t]
     [_ #f]))
 
 ; Env : var -> addr
@@ -128,8 +129,11 @@
       (hash-set store addr (set val))))
 (define mt-store (make-immutable-hash))
 
-; step : state hashtable hashtable -> ([state] hashtable hashtable)
-(define (step s cont2label call2type)
+(define cont2label (make-hash))
+(define call2type (make-hash))
+
+; step : state -> [state]
+(define (step s)
   ;(displayln s)
   ;(displayln "")
   (define nexts
@@ -159,13 +163,12 @@
        (list (State e k-env store (AppK (Lam label var exp) env k-addr) (tick s)))]
       ; Application: evaluate callee and into the body of function
       [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
-       ; TODO, check the exp should only be a lambda
-       (define val
-         (cond [(Lam? exp) (Clo exp env)]
-               [else exp]))
        (define v-addr (BAddr x t))
+       (define val (if (Lam? exp) (Clo exp env) exp))
+       (define new-env (ext-env k-env x v-addr))
+       (define new-store (ext-store store v-addr val))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State e (ext-env k-env x v-addr) (ext-store store v-addr val) (Cont-k k) (tick s)))]
+         (State e new-env new-store (Cont-k k) (tick s)))]
       ; Plus
       [(State (Plus l r) env store k t)
        (define k-addr (KAddr (Plus l r) t))
@@ -309,52 +312,66 @@
       ; Anything else
       [s (list s)]))
 
-  ; If the current continuation we have saved in the cont2label, which means
-  ; now it finished eval the body of a function and will return to that continuation,
-  ; then we put the (State-exp s) as the return type of function and save to hash table.
-  (if (and (hash-has-key? cont2label (State-kont s))
-           (valid-value? (State-exp s)))
-      (let* ([label (hash-ref cont2label (State-kont s))]
-             [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
-        (hash-set! call2type (Callsite label (State-kont s))
-                   (ArrowType (ArrowType-arg cur-type)
-                              ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
-                              (set-union (ArrowType-ret cur-type) (set (State-exp s))))))
-      (void))
-
   ; If we see an AppK continuation, then it will go into the function body
   ; so we save argument type info and where it will return to.
   (match s
-    [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
+    [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t) 
      (for/list ([k (set->list (lookup-store store k-addr))])
+       ;TODO
+       #|
+       (when (hash-has-key? cont2label (Cont-k k))
+         (printf "Warning: ~a already has label `~a`, wont set to `~a`\n"
+                 (Cont-k k)
+                 (hash-ref cont2label (Cont-k k))
+                 label))
+       |#
+       
+       ;(unless (hash-has-key? cont2label (Cont-k k))
        (hash-set! cont2label (Cont-k k) label)
-       (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set))))]
+       
+       (when (hash-has-key? call2type (Callsite label (Cont-k k)))
+         (printf "Warning: ~a already has type ~a, wont set to ~a\n"
+                 label ;(Callsite label (Cont-k k))
+                 (hash-ref call2type (Callsite label (Cont-k k)))
+                 (ArrowType exp (set))))
+         
+       (unless (hash-has-key? call2type (Callsite label (Cont-k k)))
+         (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set)))))]
     [_ (void)])
 
-  ; return next states, cont2label and call2type
-  (values nexts cont2label call2type))
+  ; If the current continuation we have saved in the cont2label, which means
+  ; now it finished eval the body of a function and will return to that continuation,
+  ; then we put the (State-exp s) as the return type of function and save to hash table.
+  (when (and (hash-has-key? cont2label (State-kont s))
+             (valid-value? (State-exp s)))
+    (let* ([label (hash-ref cont2label (State-kont s))]
+           [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
+      (hash-set! call2type
+                 (Callsite label (State-kont s))
+                 (ArrowType (ArrowType-arg cur-type)
+                            ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
+                            (set-union (set (State-exp s)) (ArrowType-ret cur-type))))))
+
+  ; return next states
+  nexts)
 
 (define (inject e)
   (State e mt-env mt-store (DoneK) '()))
 
 (define (explore f init)
-  (search f (set) (list init) (make-hash) (make-hash)))
+  (search f (set) (list init)))
 
-(define (search f seen todo cont2label call2type)
-  (cond [(empty? todo) (values seen cont2label call2type)]
+(define (search f seen todo)
+  (cond [(empty? todo) seen]
         [(set-member? seen (first todo))
-         (search f seen (cdr todo) cont2label call2type)]
-        [else (let-values ([(nexts cont2label call2type) (f (first todo) cont2label call2type)])
+         (search f seen (cdr todo))]
+        [else (let ([nexts (f (first todo))])
                 (search f
                         (set-add seen (first todo))
-                        (append nexts (cdr todo))
-                        cont2label
-                        call2type))]))
+                        (append nexts (cdr todo))))]))
 
 ; exp -> [State]
-(define (aval e)
- (let-values ([(states cont2type call2type) (explore step (inject e))])
-   states))
+(define (aval e) (explore step (inject e)))
 
 (define (find-lambda-type label call2type)
   (map cdr (filter (λ (item) (symbol=? (Callsite-label (car item)) label)) (hash->list call2type))))
@@ -386,21 +403,22 @@
   (sort (set->list states) < #:key State-time))
 
 (define (aval-infer e)
-  (let-values ([(states cont2label call2type) (explore step (inject e))])
-    (extract-func-type cont2label call2type)))
+  (hash-clear! cont2label)
+  (hash-clear! call2type)
+  (explore step (inject e))
+  (extract-func-type cont2label call2type))
 
 (define (extract-func-type cont2label call2type)
   (hash-for-each
    call2type
    (λ (key type)
      ;;;;;;
-     (printf "func: ~a \ncont: ~a \ntype: ~a\n" (Callsite-label key) (Callsite-k key) type)
-     (and (string-prefix? (symbol->string (Callsite-label key)) "let") (printf "\n"))
+     ;(printf "func: ~a \ncont: ~a \ntype: ~a\n" (Callsite-label key) (Callsite-k key) type)
+     ;(when (string-prefix? (symbol->string (Callsite-label key)) "let") (printf "\n"))
      ;;;;;;
      (let ([label (Callsite-label key)])
-       (if (not (string-prefix? (symbol->string label) "let"))
-           (printf "~a has type: ~a\n\n" label (arrow-type->string type call2type))
-           (void))))))
+       (unless (string-prefix? (symbol->string label) "let")
+         (printf "~a has type: ~a\n" label (arrow-type->string type call2type)))))))
 
 (define (parse exp)
   (match exp
@@ -419,8 +437,8 @@
     [`(set! ,var ,val) (Set var (parse val))]
     [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
     [`(begin ,s1 ,s2) (Begin (parse s1) (parse s2))]
-    [`(lambda ,label (,var) ,body) (Lam label var (parse body))]
-    [`(lambda (,var) ,body) (Lam (gensym 'λ) var (parse body))]
+    [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
+    [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
     [`(letrec ((,lhs ,rhs)) ,body)
      (parse `(let ((,lhs (void)))
