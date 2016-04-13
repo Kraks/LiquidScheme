@@ -133,16 +133,6 @@ Core Syntax
      `(,(desugar-type atype) -> ,(desugar-type rtype))]
     [t t]))
 
-(define (desugar-pred pred)
-  (match pred
-    [`(<= ,e1 ,e2) `(>= ,e2 ,e1)]
-    [`(< ,e1 ,e2)  `(>  ,e2 ,e1)]
-    [`(!= ,e1 ,e2) `(not (= ,e1 ,e2))]
-    [`(and ,e1 ,e2) `(and ,(desugar-pred e1) ,(desugar-pred e2))]
-    [`(or ,e1 ,e2)  `(or ,(desugar-pred e1) ,(desugar-pred e2))]
-    [`(not ,e) `(not ,(desugar-pred e))]
-    [e e]))
-
 ;============
 
 (module+ test

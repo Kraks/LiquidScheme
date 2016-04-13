@@ -57,7 +57,7 @@
     ;;;;;;;;;;;;;;;;
     [((PNot p1) (PNot p2)) (IntValue #t)]
     [(_ _) (error 'pred+ "unknown predicate ~a ~a" l r)]))
-     
+
 (pred+ 3 4)
 (pred+ 4 (PGreater (PSelf) 5))
 (pred+ -4 (PGreater 5 (PSelf)))

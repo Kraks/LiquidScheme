@@ -7,8 +7,7 @@
 (require rackunit)
 (require "structs.rkt")
 
-(provide parse
-         aval
+(provide aval
          aval-infer
          call2type)
 
@@ -349,32 +348,6 @@
      (let ([label (Callsite-label key)])
        (unless (string-prefix? (symbol->string label) "let")
          (printf "~a has type: ~a\n" label (arrow-type->string type call2type)))))))
-
-(define (parse exp)
-  (match exp
-    ['true (Bool #t)]
-    ['false (Bool #t)]
-    ['(void) (Void)]
-    [(? integer?) (Int #t)]
-    [(? symbol?) (Var exp)]
-    [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
-    [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
-    [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
-    [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
-    [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
-    [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
-    [`(not ,bl) (Not (parse bl))]
-    [`(set! ,var ,val) (Set var (parse val))]
-    [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
-    [`(begin ,s1 ,s2) (Begin (parse s1) (parse s2))]
-    [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
-    [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
-    [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
-    [`(letrec ((,lhs ,rhs)) ,body)
-     (parse `(let ((,lhs (void)))
-               (begin (set! ,lhs ,rhs)
-                      ,body)))]
-    [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 (module+ test
   (check-equal? (ext-store mt-store 1 'a)
