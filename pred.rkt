@@ -2,6 +2,8 @@
 
 (require "structs.rkt")
 
+; TODO inline/expand
+
 (define (int+ l r)
   (match* (l r)
     [((IntValue p1) (IntValue p2)) (pred+ p1 p2)]
