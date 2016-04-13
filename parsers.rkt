@@ -69,9 +69,9 @@
 (define (parse exp)
   (match exp
     ['true (Bool #t)]
-    ['false (Bool #t)]
+    ['false (Bool #f)]
     ['(void) (Void)]
-    [(? integer?) (Int #t)]
+    [(? integer? n) (Int n)]
     [(? symbol?) (Var exp)]
     [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
     [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]

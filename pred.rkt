@@ -11,6 +11,9 @@
 
 (define (pred+ l r)
   (match* (l r)
+    [(#t _) (IntValue #t)]
+    [(_ #t) (IntValue #t)]
+    ;;;;;;;;;;;;;;;;
     [((? number?) (? number?)) (IntValue (+ l r))]
     [((? number?) (PGreater (PSelf) (? number? r-num)))
      (IntValue (PGreater (PSelf) (+ l r-num)))]
