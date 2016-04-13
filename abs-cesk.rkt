@@ -34,8 +34,8 @@
 (struct Var (name) #:transparent)
 (struct Lam (label var exp) #:transparent)
 (struct App (fun arg) #:transparent)
-(struct Int () #:transparent) ;pred
-(struct Bool () #:transparent) ;pred
+(struct Int (pred) #:transparent)
+(struct Bool (pred) #:transparent)
 (struct Plus (lhs rhs) #:transparent)
 (struct Minus (lhs rhs) #:transparent)
 (struct Mult (lhs rhs) #:transparent)
@@ -74,8 +74,8 @@
 ; Storable / Value
 (struct Clo (lam env) #:transparent)
 (struct Cont (k) #:transparent)
-(struct IntValue () #:transparent) ;pred
-(struct BoolValue () #:transparent) ;pred
+(struct IntValue (pred) #:transparent)
+(struct BoolValue (pred) #:transparent)
 (struct VoidValue () #:transparent)
 
 ; Address
@@ -139,11 +139,11 @@
   (define nexts
     (match s
       ; Int
-      [(State (Int) env store k t)
-       (list (State (IntValue) env store k (tick s)))]
+      [(State (Int pred) env store k t)
+       (list (State (IntValue #t) env store k (tick s)))]
       ; Bool
-      [(State (Bool) env store k t)
-       (list (State (BoolValue) env store k (tick s)))]
+      [(State (Bool pred) env store k t)
+       (list (State (BoolValue #t) env store k (tick s)))]
       ; Void
       [(State (Void) env store k t)
        (list (State (VoidValue) env store k (tick s)))]
@@ -183,7 +183,7 @@
       [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
        (check-true (IntValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (IntValue) env store (Cont-k k) (tick s)))]
+         (State (IntValue #t) env store (Cont-k k) (tick s)))]
       ; Minus
       [(State (Minus l r) env store k t)
        (define k-addr (KAddr (Minus l r) t))
@@ -198,7 +198,7 @@
       [(State (? valid-value? r) env store (DoMinusK l k-addr) t)
        (check-true (IntValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (IntValue) env store (Cont-k k) (tick s)))]
+         (State (IntValue #t) env store (Cont-k k) (tick s)))]
       ; Mult
       [(State (Mult l r) env store k t)
        (define k-addr (KAddr (Mult l r) t))
@@ -213,7 +213,7 @@
       [(State (? valid-value? r) env store (DoMultK l k-addr) t)
        (check-true (IntValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (IntValue) env store (Cont-k k) (tick s)))]
+         (State (IntValue #t) env store (Cont-k k) (tick s)))]
       ; NumEq
       [(State (NumEq l r) env store k t)
        (define k-addr (KAddr (NumEq l r) t))
@@ -228,7 +228,7 @@
       [(State (? valid-value? r) env store (DoNumEqK l k-addr) t)
        (check-true (IntValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (BoolValue) env store (Cont-k k) (tick s)))]
+         (State (BoolValue #t) env store (Cont-k k) (tick s)))]
       ; Logic and
       ; TODO logic operation actually allows non-boolean values
       [(State (And l r) env store k t)
@@ -241,12 +241,12 @@
        (check-true (BoolValue? l))
        (cons (State r r-env store (DoAndK l k-addr) (tick s))
              (for/list ([k (set->list (lookup-store store k-addr))])
-               (State (BoolValue) env store (Cont-k k) (tick s))))]
+               (State (BoolValue #t) env store (Cont-k k) (tick s))))]
       ; Logic and: after evaluate right hand side
       [(State (? valid-value? r) env store (DoAndK l k-addr) t)
        (check-true (BoolValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (BoolValue) env store (Cont-k k) (tick s)))]
+         (State (BoolValue #t) env store (Cont-k k) (tick s)))]
       ; Logic or
       [(State (Or l r) env store k t)
        (define k-addr (KAddr (Or l r) t))
@@ -258,12 +258,12 @@
        (check-true (BoolValue? l))
        (cons (State r r-env store (DoOrK l k-addr) (tick s))
              (for/list ([k (set->list (lookup-store store k-addr))])
-               (State (BoolValue) env store (Cont-k k) (tick s))))]
+               (State (BoolValue #t) env store (Cont-k k) (tick s))))]
       ; Logic or: after evaluate right hand side
       [(State (? valid-value? r) env store (DoOrK l k-addr) t)
        (check-true (BoolValue? r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (BoolValue) env store (Cont-k k) (tick s)))]
+         (State (BoolValue #t) env store (Cont-k k) (tick s)))]
       ; Logic not
       [(State (Not b) env store k t)
        (define k-addr (KAddr (Not b) t))
@@ -274,7 +274,7 @@
       [(State (? valid-value? b) env store (DoNotK k-addr) t)
        (check-true (BoolValue? b))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (BoolValue) env store (Cont-k k) (tick s)))]
+         (State (BoolValue #t) env store (Cont-k k) (tick s)))]
       ; If
       [(State (If tst thn els) env store k t)
        (define k-addr (KAddr (If tst thn els) t))
@@ -315,7 +315,7 @@
   ; If we see an AppK continuation, then it will go into the function body
   ; so we save argument type info and where it will return to.
   (match s
-    [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t) 
+    [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
      (for/list ([k (set->list (lookup-store store k-addr))])
        ;TODO
        #|
@@ -378,8 +378,8 @@
 
 (define (primitive->string t call2type)
   (match t
-    [(BoolValue) "bool"]
-    [(IntValue) "int"]
+    [(BoolValue pred) "bool"]
+    [(IntValue pred) "int"]
     [(VoidValue) "void"]
     [(Lam label arg body)
      (let ([lambda-types (find-lambda-type label call2type)])
@@ -422,10 +422,10 @@
 
 (define (parse exp)
   (match exp
-    ['true (Bool)]
-    ['false (Bool)]
+    ['true (Bool #t)]
+    ['false (Bool #t)]
     ['(void) (Void)]
-    [(? integer?) (Int)]
+    [(? integer?) (Int #t)]
     [(? symbol?) (Var exp)]
     [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
     [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
