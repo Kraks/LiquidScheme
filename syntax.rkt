@@ -2,6 +2,8 @@
 
 (require rackunit)
 
+(provide desugar)
+
 #|
 Language Syntax
 

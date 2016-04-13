@@ -38,6 +38,13 @@
 (struct POr (l r) #:transparent)
 (struct PNot (b) #:transparent)
 
+(struct PInt (n) #:transparent)
+(struct PPlus (l r) #:transparent)
+(struct PMinus (l r) #:transparent)
+(struct PMult (l r) #:transparent)
+(struct PNumEq (l r) #:transparent)
+(struct PGreaterThan (l r) #:transparent)
+
 ;;;;;;;;;;;;;;;;;;
 
 ; Continuation
