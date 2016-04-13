@@ -69,10 +69,10 @@
     (match s
       ; Int
       [(State (Int pred) env store k t)
-       (list (State (IntValue #t) env store k (tick s)))]
+       (list (State (IntValue pred) env store k (tick s)))]
       ; Bool
       [(State (Bool pred) env store k t)
-       (list (State (BoolValue #t) env store k (tick s)))]
+       (list (State (BoolValue pred) env store k (tick s)))]
       ; Void
       [(State (Void) env store k t)
        (list (State (VoidValue) env store k (tick s)))]
