@@ -93,10 +93,11 @@
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 ;; test
-(define h (define-types->hash
-            '((: a (-> Int Int))
-              (: b (-> Int Int))
-              (: c (-> Int Int))
-              (: c (-> Bool Bool)))))
-
-(make-hash h)
+(module+ test
+  (define h (define-types->hash
+              '((: a (-> Int Int))
+                (: b (-> Int Int))
+                (: c (-> Int Int))
+                (: c (-> Bool Bool)))))
+  
+  (make-hash h))

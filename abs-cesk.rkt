@@ -18,9 +18,6 @@
 ; and the continuation where the function returns to.
 (struct Callsite (label k) #:transparent)
 
-; ArrowType is function type.
-(struct ArrowType (arg ret) #:transparent)
-
 (define (tick s)
   (take (cons (State-exp s) (State-time s)) (k)))
 
@@ -68,11 +65,13 @@
   (define nexts
     (match s
       ; Int
+      ; TODO
       [(State (Int pred) env store k t)
-       (list (State (IntValue pred) env store k (tick s)))]
+       (list (State (IntValue #t) env store k (tick s)))]
       ; Bool
+      ; TODO
       [(State (Bool pred) env store k t)
-       (list (State (BoolValue pred) env store k (tick s)))]
+       (list (State (BoolValue #t) env store k (tick s)))]
       ; Void
       [(State (Void) env store k t)
        (list (State (VoidValue) env store k (tick s)))]
@@ -257,15 +256,17 @@
        
        ;(unless (hash-has-key? cont2label (Cont-k k))
        (hash-set! cont2label (Cont-k k) label)
-       
+
+       #|
        (when (hash-has-key? call2type (Callsite label (Cont-k k)))
          (printf "Warning: ~a already has type ~a, wont set to ~a\n"
                  label ;(Callsite label (Cont-k k))
                  (hash-ref call2type (Callsite label (Cont-k k)))
-                 (ArrowType exp (set))))
+                 (TArrow exp (set))))
+       |#
          
        (unless (hash-has-key? call2type (Callsite label (Cont-k k)))
-         (hash-set! call2type (Callsite label (Cont-k k)) (ArrowType exp (set)))))]
+         (hash-set! call2type (Callsite label (Cont-k k)) (TArrow exp (set)))))]
     [_ (void)])
 
   ; If the current continuation we have saved in the cont2label, which means
@@ -277,9 +278,9 @@
            [cur-type (hash-ref call2type (Callsite label (State-kont s)))])
       (hash-set! call2type
                  (Callsite label (State-kont s))
-                 (ArrowType (ArrowType-arg cur-type)
+                 (TArrow (TArrow-arg cur-type)
                             ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
-                            (set-union (set (State-exp s)) (ArrowType-ret cur-type))))))
+                            (set-union (set (State-exp s)) (TArrow-ret cur-type))))))
 
   ; return next states
   nexts)
@@ -320,7 +321,7 @@
 
 (define (arrow-type->string t call2type)
   (match t
-    [(ArrowType arg ret)
+    [(TArrow arg ret)
      (string-append (primitive->string arg call2type)
                     " -> "
                     (if (= 1 (set-count ret))

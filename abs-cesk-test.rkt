@@ -1,6 +1,7 @@
 #lang racket
 
 (require "abs-cesk.rkt")
+(require "parsers.rkt")
 
 ;(parse '{{lambda {x} x} {lambda {y} y}})
 ;(parse '{let ([x 1]) x})
@@ -43,9 +44,11 @@
 ;(define s8 (aval (parse '{{lambda {x} {not x}} true})))
 
 ;(define s9 (aval (parse '{{{{lambda {x} {lambda {i} {lambda {j} {if x i j}}}} true} 1} 2})))
+
 ;(define s10 (aval (parse '{begin {+ 1 2} {+ 3 4}})))
 
 ;(aval (parse '{or {not true} false}))
+
 ;(aval (parse '{+ {if true 1 2} 3}))
 
 #;
@@ -77,11 +80,16 @@
                          {tozero 5}}))
 ;(aval-infer tozero)
 
+(define toten (parse '{letrec {{toten {λ toten {n} {if {= n 10} false
+                                                       {toten {+ n 1}}}}}}
+                        {toten 1}}))
+;(aval-infer toten)
+
 (define fib (parse '{letrec {{fib {lambda fib {n} {if {= n 1}
                                                       1
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
                       {fib 5}}))
-(aval-infer fib)
+;(aval-infer fib)
 
 (define idid (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval-infer idid)
