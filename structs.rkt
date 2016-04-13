@@ -31,8 +31,8 @@
 (struct TIs (arrows) #:transparent)
 
 ; Predicate
-(struct PSelf () #:transparent)
 (struct PVar (name) #:transparent)
+(struct PSelf () #:transparent)
 (struct PGreater (l r) #:transparent)
 (struct PAnd (l r) #:transparent)
 (struct POr (l r) #:transparent)
