@@ -5,14 +5,12 @@
 ; TODO add test cases
 
 (require rackunit)
-
 (require "structs.rkt")
 
 (provide parse
          aval
          aval-infer
          call2type)
-
 
 ; Currently using 1-CFA
 (define k (make-parameter 1))

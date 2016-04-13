@@ -34,7 +34,6 @@
 (struct PSelf () #:transparent)
 (struct PVar (name) #:transparent)
 (struct PGreater (l r) #:transparent)
-(struct PNumEq (l r) #:transparent)
 (struct PAnd (l r) #:transparent)
 (struct POr (l r) #:transparent)
 (struct PNot (b) #:transparent)
