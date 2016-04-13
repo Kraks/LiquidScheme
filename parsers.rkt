@@ -7,6 +7,7 @@
 (provide parse
          define-types->hash)
 
+
 (define (define-types->hash t-defs)
   (define (merge-define-types define-types)
     (define (aux dt lst)
@@ -23,7 +24,14 @@
     (foldl aux
            '()
            define-types))
-  (merge-define-types (map parse-type-def t-defs)))
+  (define h (make-hash (merge-define-types (map parse-type-def t-defs))))
+  (for/hash ([k (hash-keys h)])
+            (let* ([val (hash-ref h k)]
+                   [len (length (set->list val))])
+              (values k (if (= len 1)
+                            (set-first val)
+                            (TIs val))))))
+
 
 (define (parse-type-def tdef)
   (define (parse-type exp)
@@ -99,5 +107,4 @@
                 (: b (-> Int Int))
                 (: c (-> Int Int))
                 (: c (-> Bool Bool)))))
-  
-  (make-hash h))
+  h)
