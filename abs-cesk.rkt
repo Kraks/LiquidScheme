@@ -6,81 +6,13 @@
 
 (require rackunit)
 
+(require "structs.rkt")
+
 (provide parse
          aval
          aval-infer
          call2type)
 
-(struct State (exp env store kont time) #:transparent)
-
-; Type
-(struct DefineType (name type))
-(struct TInt (pred))
-(struct TBool (pred))
-(struct TAny ())
-(struct TArrow (arg ret))
-(struct TIs (arrows))
-
-; Predicate
-(struct PSelf ())
-(struct PId (name))
-(struct PGreater (l r))
-(struct PEqual (l r))
-(struct PAnd (l r))
-(struct POr (l r))
-(struct PNot (b))
-
-; Exp
-(struct Var (name) #:transparent)
-(struct Lam (label var exp) #:transparent)
-(struct App (fun arg) #:transparent)
-(struct Int (pred) #:transparent)
-(struct Bool (pred) #:transparent)
-(struct Plus (lhs rhs) #:transparent)
-(struct Minus (lhs rhs) #:transparent)
-(struct Mult (lhs rhs) #:transparent)
-(struct And (lhs rhs) #:transparent)
-(struct Or (lhs rhs) #:transparent)
-(struct Not (bl) #:transparent)
-(struct Set (var val) #:transparent)
-(struct If (tst thn els) #:transparent)
-(struct Begin (s1 s2) #:transparent)
-(struct Void () #:transparent)
-(struct NumEq (lhs rhs) #:transparent)
-
-;;;;;;;;;;;;;;;;;;
-
-; Continuation
-(struct DoneK () #:transparent)
-(struct ArgK (exp env addr) #:transparent)
-(struct AppK (lam env addr) #:transparent)
-(struct PlusK (r env addr) #:transparent)
-(struct DoPlusK (l addr) #:transparent)
-(struct MinusK (r env addr) #:transparent)
-(struct DoMinusK (l addr) #:transparent)
-(struct MultK (r env addr) #:transparent)
-(struct DoMultK (l addr) #:transparent)
-(struct AndK (r env addr) #:transparent)
-(struct DoAndK (l addr) #:transparent)
-(struct OrK (r env addr) #:transparent)
-(struct DoOrK (l addr) #:transparent)
-(struct DoNotK (addr) #:transparent)
-(struct DoIfK (thn els env addr) #:transparent)
-(struct SetK (var addr) #:transparent)
-(struct BeginK (s2 addr) #:transparent)
-(struct NumEqK (r env addr) #:transparent)
-(struct DoNumEqK (l addr) #:transparent)
-
-; Storable / Value
-(struct Clo (lam env) #:transparent)
-(struct Cont (k) #:transparent)
-(struct IntValue (pred) #:transparent)
-(struct BoolValue (pred) #:transparent)
-(struct VoidValue () #:transparent)
-
-; Address
-(struct BAddr (var time) #:transparent)
-(struct KAddr (exp time) #:transparent)
 
 ; Currently using 1-CFA
 (define k (make-parameter 1))
