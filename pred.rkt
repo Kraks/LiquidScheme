@@ -35,7 +35,8 @@
                  (PGreater (? number? r1) (PSelf)))
            (PAnd (PGreater (PSelf) (? number? l2))
                  (PGreater (? number? r2) (PSelf))))
-     (
+     (norm/pand (PAnd (PGreater (PSelf) (max l1 l2))
+                      (PGreater (min r1 r2) (PSelf))))]
     [(PAnd (? PAnd? l) (? PAnd? r))
      (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
     [p p]))
