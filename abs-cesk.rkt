@@ -47,12 +47,23 @@
   (if (hash-has-key? store addr)
       (hash-ref store addr)
       (set)))
+
+; store-update : store adddr Set(val) -> store
+(define (store-update store addr vals)
+  (hash-update store addr
+               (λ (d) (set-union d vals))
+               (set)))
+
 ; ext-store : store addr val -> store
 (define (ext-store store addr val)
-  (if (hash-has-key? store addr)
-      (let ([old-vals (lookup-store store addr)])
-        (hash-set store addr (set-union old-vals (set val))))
-      (hash-set store addr (set val))))
+  (store-update store addr (set val)))
+
+; store-join : store store -> store
+(define (store-join s1 s2)
+  (for/fold ([new-store s1])
+            ([(k v) (in-hash s2)])
+    (store-update new-store k v)))
+
 (define mt-store (make-immutable-hash))
 
 (define cont2label (make-hash))
@@ -244,6 +255,10 @@
   ; so we save argument type info and where it will return to.
   (match s
     [(State (? valid-value? exp) env store (AppK (Lam label x e) k-env k-addr) t)
+     ;(hash-set! cont2label k-addr label)
+     ;(unless (hash-has-key? call2type (Callsite label k-addr))
+     ;̄    (hash-set! call2type (Callsite label k-addr) (TArrow exp (set))))
+     
      (for/list ([k (set->list (lookup-store store k-addr))])
        ;TODO
        #|
@@ -264,7 +279,6 @@
                  (hash-ref call2type (Callsite label (Cont-k k)))
                  (TArrow exp (set))))
        |#
-         
        (unless (hash-has-key? call2type (Callsite label (Cont-k k)))
          (hash-set! call2type (Callsite label (Cont-k k)) (TArrow exp (set)))))]
     [_ (void)])

@@ -7,7 +7,6 @@
 (provide parse
          define-types->hash)
 
-
 (define (define-types->hash t-defs)
   (define (merge-define-types define-types)
     (define (aux dt lst)
@@ -31,7 +30,6 @@
               (values k (if (= len 1)
                             (set-first val)
                             (TIs val))))))
-
 
 (define (parse-type-def tdef)
   (define (parse-type exp)

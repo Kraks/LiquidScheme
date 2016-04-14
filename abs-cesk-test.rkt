@@ -89,7 +89,7 @@
                                                       1
                                                       {+ {fib {- n 1}} {fib {- n 2}}}}}}}
                       {fib 5}}))
-;(aval-infer fib)
+(aval-infer fib)
 
 (define idid (parse '{{lambda {x} x} {lambda {y} y}}))
 ;(aval-infer idid)
