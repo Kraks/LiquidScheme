@@ -238,6 +238,18 @@
                              (PAnd (PGreater (PSelf) 12)
                                    (PGreater 17 (PSelf)))))
                 (PAnd (PGreater (PSelf) 15) (PGreater 20 (PSelf))))
+  
+  (check-equal? (pred+ (PAnd (PAnd (PGreater (PSelf) 3)
+                                   (PAnd (PGreater (PSelf) 4)
+                                         (PGreater 6 (PSelf))))
+                             (PAnd (PGreater (PSelf) 1)
+                                   (PGreater 5 (PSelf))))
+                       (PAnd (PAnd (PGreater (PSelf) 10)
+                                   (PGreater 15 (PSelf)))
+                             (PAnd (PGreater (PSelf) 12)
+                                   (PGreater 17 (PSelf)))))
+                (PAnd (PGreater (PSelf) 16) (PGreater 20 (PSelf))))
+  
   (check-equal? (pred+ (PNot 3) (PNot 5)) #t))
 
 
