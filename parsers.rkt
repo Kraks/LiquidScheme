@@ -50,8 +50,8 @@
 
 (define (desugar-pred pred)
   (match pred
-    [`(>= ,e1 ,e2) `(or (> ,e1 ,e2) (= ,e2 ,e1))]
-    [`(<= ,e1 ,e2) `(or (> ,e2 ,e1) (= ,e2 e1))]
+    [`(>= ,e1 ,e2) (desugar-pred `(or (> ,e1 ,e2) (= ,e2 ,e1)))]
+    [`(<= ,e1 ,e2) (desugar-pred `(or (> ,e2 ,e1) (= ,e2 e1)))]
     [`(!= ,e1 ,e2) `(not (= ,e1 ,e2))]
     [`(< ,e1 ,e2)  `(>  ,e2 ,e1)]
     [`(or ,e1 ,e2) `(not (and (not ,e1) (not ,e2)))]
