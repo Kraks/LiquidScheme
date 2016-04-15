@@ -4,6 +4,7 @@
 (require "structs.rkt")
 
 ; TODO inline/expand
+; TODO DNF/CNF/NNF ?
 
 (define (int+ l r)
   (match* (l r)
@@ -13,8 +14,39 @@
 (define (swap/pand p)
   (match p [(PAnd l r) (PAnd r l)]))
 
+(define (norm/por p)
+  (match p
+    [(POr a b) (PNot (PAnd (PNot (norm/por a)) (PNot (norm/por b))))]
+    [p p]))
+
+(define (norm/pnot p)
+  (match p
+    [(or (? number?) (? True?) (? False?)) p]
+    [(PNot (True)) (False)]
+    [(PNot (False)) (True)]
+    [(PNot (? number?)) p]
+    [(PNot (PNot p1)) (norm/pnot p1)]
+    [(PNot (? PAnd? pa))
+     (match (norm/pand pa)
+       [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf))) -1])]
+        
+    [(PNot (PGreater (PSelf) (? number? n))) -1]
+    [(PNot (PGreater (? number? n) (PSelf))) -1]))
+
+(module+ test
+  (check-equal? (norm/pnot (PNot 3)) (PNot 3))
+  (check-equal? (norm/pnot (PNot (PNot 3))) 3)
+  (check-equal? (norm/pnot (PNot (True))) (False))
+  (check-equal? (norm/pnot (PNot (False))) (True))
+  (check-equal? (norm/pnot (PNot (PNot (PNot (False))))) (True))
+  (check-equal? (norm/pnot (PNot (PNot (PNot (PNot (False)))))) (False)))
+
 (define (norm/pand p)
   (match p
+    [(PAnd (True) (True)) (True)]
+    [(PAnd (False) _) (False)]
+    [(PAnd _ (False)) (False)]
+
     [(PAnd (? number? l) (? number? r))
      (check-true (= l r))
      l]
@@ -66,13 +98,15 @@
      (norm/pand (PAnd (norm/pand (PAnd pl r))
                       (norm/pand (PAnd pr r))))]
     [(PAnd l (? PAnd? r)) (norm/pand (PAnd r l))]
+
+    [(PAnd (? PNot? n1) (? PNot? n2)) (norm/pand (norm/pnot n1) (norm/pnot n2))]
+    [(PAnd (? PNot? n) (? number? r))
+     (norm/pand (PAnd (norm/pnot n) r))]
+    [(PAnd (? PNot? n) (PGreater (PSelf) (? number? r-num))) -1]
+    [(PAnd l (? PNot? r)) -1]
+    ; TODO
     
     [p (printf "warning: ~a\n" p) p]))
-
-(define (norm/por p)
-  (match p
-    [(POr a b) (PNot (PAnd (PNot a) (PNot b)))]
-    [p p]))
 
 (define (pred+ l r)
   (match* (l r)
@@ -147,6 +181,10 @@
     [(_ _) (error 'pred+ "unknown predicate ~a ~a" l r)]))
 
 (module+ test
+  (check-equal? (norm/pand (PAnd (PAnd (True) (False)) (PAnd (True) (True))))
+                (False))
+  (check-equal? (norm/pand (PAnd (PAnd (True) (True)) (PAnd (True) (True))))
+                (True))
   (check-equal? (norm/pand (PAnd 5 5))
                 5)
   (check-equal? (norm/pand (PAnd 3 (PGreater 6 (PSelf))))
@@ -156,6 +194,8 @@
   (check-equal? (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
                 (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
   (check-equal? (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 3 (PSelf))))
+                3)
+  (check-equal? (norm/pand (PAnd 3 (PAnd (PGreater (PSelf) 2) (PGreater 5 (PSelf)))))
                 3)
   (check-equal? (norm/pand (PAnd (PGreater 15 (PSelf)) (PGreater (PSelf) 10)))
                 (PAnd (PGreater (PSelf) 10) (PGreater 15 (PSelf))))

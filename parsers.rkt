@@ -36,7 +36,7 @@
     (match exp
       [(? integer?) (TInt exp)]
       ['Int (TInt #t)]
-      ['Bool (TBool #t)]   
+      ['Bool (TBool #t)]
       ['Any (TAny)]
       ['_ (PSelf)]
       ['true (TBool (True))]
@@ -61,7 +61,7 @@
   (let ([d-pred (desugar-pred pred)])
     (match d-pred
       ['true (True)]
-      ['false (error 'parse-pred "can't assign #f/false to predicate")]
+      ['false (False)]
       [(? integer?) (PInt d-pred)]
       [(? symbol?) (PVar d-pred)]
       [`(+ ,lhs ,rhs) (PPlus (parse-pred lhs) (parse-pred rhs))]
