@@ -15,6 +15,9 @@
 
 (define (norm/pand p)
   (match p
+    [(PAnd (? number? l) (? number? r))
+     (check-true (= l r))
+     l]
     ; (int & _ > int)
     [(PAnd (? number? l-num) (PGreater (PSelf) (? number? r-num)))
      (check-true (>= l-num r-num))
@@ -25,6 +28,7 @@
      l-num]
     ; (_ > _ & int) -> (int & _ > _)
     [(PAnd (PGreater _ _) (? number?)) (norm/pand (swap/pand p))]
+    
     ; (_ > int & _ > int)
     [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
      (PGreater (PSelf) (max l-num r-num))]
@@ -38,6 +42,7 @@
     ; (_ < int & _ > int)
     [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
      (norm/pand (swap/pand p))]
+    
     ; ((_ > int & _ < int) & (_ > int & _ < int))
     [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
                  (PGreater (? number? r1) (PSelf)))
@@ -45,10 +50,23 @@
                  (PGreater (? number? r2) (PSelf))))
      (norm/pand (PAnd (PGreater (PSelf) (max l1 l2))
                       (PGreater (min r1 r2) (PSelf))))]
-    ; (pand & pand)
+    
+    [(PAnd (PAnd (PGreater (PSelf) (? number? pl))
+                 (PGreater (? number? pr) (PSelf)))
+           (PGreater (PSelf) (? number? l)))
+     (norm/pand (PAnd (PGreater (PSelf) (max l pl)) (PGreater pr (PSelf))))]
+    [(PAnd (PAnd (PGreater (PSelf) (? number? pl))
+                 (PGreater (? number? pr) (PSelf)))
+           (PGreater (? number? u) (PSelf)))
+     (norm/pand (PAnd (PGreater (PSelf) pl) (PGreater (min u pr) (PSelf))))]
+    
     [(PAnd (? PAnd? l) (? PAnd? r))
      (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
-    [p p]))
+    [(PAnd (PAnd pl pr) r)
+     (norm/pand (PAnd (norm/pand (PAnd pl r))
+                      (norm/pand (PAnd pr r))))]
+    [(PAnd l (? PAnd? r)) (norm/pand (PAnd r l))]
+    [p (printf "warning: ~a\n" p) p]))
 
 (define (pred+ l r)
   (match* (l r)
@@ -119,6 +137,25 @@
     [(_ _) (error 'pred+ "unknown predicate ~a ~a" l r)]))
 
 (module+ test
+  (norm/pand (PAnd 5 5))
+  (norm/pand (PAnd 3 (PGreater 6 (PSelf))))
+  (norm/pand (PAnd (PGreater 5 (PSelf)) (PGreater 3 (PSelf))))
+  (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
+  (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 3 (PSelf))))
+  (norm/pand (PAnd (PGreater 15 (PSelf)) (PGreater (PSelf) 10)))
+  (norm/pand (PAnd (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf)))
+                   (PAnd (PGreater (PSelf) 5) (PGreater 9 (PSelf)))))
+  (norm/pand (PAnd (PAnd (PAnd (PGreater (PSelf) 0) (PGreater 9 (PSelf)))
+                         (PAnd (PGreater (PSelf) 3) (PGreater 8 (PSelf))))
+                   (PAnd (PGreater (PSelf) 5) (PGreater 9 (PSelf)))))
+  (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
+                   4))
+  (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
+                   (PGreater (PSelf) 3)))
+  (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
+                   (PGreater 7 (PSelf)))))
+
+(module+ test
   (pred+ #t 3)
   (pred+ 3 #t)
   (pred+ 3 4)
@@ -157,4 +194,6 @@
          (PAnd (PAnd (PGreater (PSelf) 10)
                      (PGreater 15 (PSelf)))
                (PAnd (PGreater (PSelf) 12)
-                     (PGreater 17 (PSelf))))))
+                     (PGreater 17 (PSelf)))))
+
+  (pred+ (PNot 3) (PNot 5)))
