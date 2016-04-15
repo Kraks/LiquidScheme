@@ -41,6 +41,11 @@
      (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
     [p p]))
 
+(define (norm/por p)
+  (match p
+    [(POr a b) (PNot (PAnd (PNot a) (PNot b)))]
+    [p p]))
+
 (define (pred+ l r)
   (match* (l r)
     [(#t _) #t]
@@ -57,7 +62,7 @@
         (PAnd (PGreater (PSelf) (+ l l-num)) (PGreater (+ l r-num) (PSelf)))]
        [r (pred+ l r)])]
     [((? number?) (POr p1 p2))
-     (POr (pred+ l p1) (pred+ l p2))]
+     (norm/por (POr (pred+ l p1) (pred+ l p2)))]
     [((? number?) (PNot p))
      (PNot (pred+ l p))]
     [((PGreater _ _) (? number?)) (pred+ r l)]
@@ -76,7 +81,7 @@
     [((PGreater _ _) (PAnd p1 p2))
      (PAnd (pred+ l p1) (pred+ l p2))]
     [((PGreater _ _) (POr p1 p2))
-     (POr (pred+ l p1) (pred+ l p2))]
+     (norm/por (POr (pred+ l p1) (pred+ l p2)))]
     [((PGreater _ _) (PNot p))
      (PNot (pred+ l p))]
     [((PAnd _ _) (PGreater _ _)) (pred+ r l)]
@@ -89,8 +94,12 @@
          (PAnd (PGreater (PSelf) (? number? l2)) (PGreater (? number? u2) (PSelf))))
         (PAnd (PGreater (PSelf) (+ l1 l2)) (PGreater (+ u1 u2) (PSelf)))]
        [(pl pr) (pred+ pl pr)])]
-    [((PAnd p11 p12) (POr p21 p22)) -1]
-    [((PAnd p11 p12) (PNot p)) -1]
+    [((PAnd p11 p12) (POr p21 p22))
+     (pred+ (norm/pand l) (norm/por r))]
+    [((PAnd p11 p12) (PNot p))
+     (match* ((norm/pand l) r)
+       [((? PAnd? norm-l) _) (PNot (pred+ norm-l p))]
+       [(norm-l _) (pred+ norm-l r)])]
     [((POr _ _) (PAnd _ _)) (pred+ r l)]
     [((PNot _) (PAnd _ _)) (pred+ r l)]
     ;;;;;;;;;;;;;;;;
@@ -112,4 +121,39 @@
                      (PGreater 5 (PSelf)))
                (PAnd (PGreater (PSelf) 3)
                      (PGreater 7 (PSelf))))
-         3))
+         3)
+  
+  (norm/por (POr 8 (PGreater (PSelf) 1)))
+  (pred+ 3 (PAnd (PNot 8) (PGreater (PSelf) 1)))
+  )
+
+
+#;
+(define (norm/pand p)
+  (match p
+    [(PAnd (? number? l-num) (PGreater (PSelf) (? number? r-num)))
+     (check-true (>= l-num r-num))
+     l-num]
+    [(PAnd (? number? l-num) (PGreater (? number? r-num) (PSelf)))
+     (check-true (<= l-num r-num))
+     l-num]
+    [(PAnd (PGreater _ _) (? number?)) (norm/pand (swap/pand p))]
+    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
+     (PGreater (PSelf) (max l-num r-num))]
+    [(PAnd (PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
+     (PGreater (min l-num r-num) (PSelf))]
+    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
+     (check-true (<= l-num r-num))
+     (if (= l-num r-num) l-num p)]
+    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
+     (norm/pand (swap/pand p))]
+    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
+                 (PGreater (? number? r1) (PSelf)))
+           (PAnd (PGreater (PSelf) (? number? l2))
+                 (PGreater (? number? r2) (PSelf))))
+     (norm/pand (PAnd (PGreater (PSelf) (max l1 l2))
+                      (PGreater (min r1 r2) (PSelf))))]
+    [(PAnd (? PAnd? l) (? PAnd? r))
+     (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
+    [p p]))
+

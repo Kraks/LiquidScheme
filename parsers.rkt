@@ -38,6 +38,7 @@
       ['Int (TInt #t)]
       ['Bool (TBool #t)]   
       ['Any (TAny)]
+      ['_ (PSelf)]
       ['true (TBool (True))]
       ['false (TBool (False))]
       [`(-> ,in-type ,out-type) (TArrow (parse-type in-type) (parse-type out-type))]
