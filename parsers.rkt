@@ -54,6 +54,7 @@
     [`(<= ,e1 ,e2) `(or (> ,e2 ,e1) (= ,e2 e1))]
     [`(!= ,e1 ,e2) `(not (= ,e1 ,e2))]
     [`(< ,e1 ,e2)  `(>  ,e2 ,e1)]
+    [`(or ,e1 ,e2) `(not (and (not ,e1) (not ,e2)))]
     [e e]))
 
 (define (parse-pred pred)
@@ -68,7 +69,7 @@
       [`(* ,lhs ,rhs) (PMult (parse-pred lhs) (parse-pred rhs))]
       [`(= ,lhs ,rhs) (PNumEq (parse-pred lhs) (parse-pred rhs))] ;; var to the left of =
       [`(and ,lhs ,rhs) (PAnd (parse-pred lhs) (parse-pred rhs))]
-      [`(or ,lhs ,rhs) (POr (parse-pred lhs) (parse-pred rhs))]
+      ;[`(or ,lhs ,rhs) (POr (parse-pred lhs) (parse-pred rhs))]
       [`(not ,bl) (PNot (parse-pred bl))]
       [`(> ,lhs ,rhs) (PGreater (parse-pred lhs) (parse-pred rhs))]
       [_ (error 'parse-pred "unknown predicate ~a" pred)])))
@@ -106,4 +107,10 @@
                 (: b (-> Int Int))
                 (: c (-> Int Int))
                 (: c (-> Bool Bool)))))
-  h)
+  (check-equal? (hash 'a
+                      (TArrow (TInt #t) (TInt #t))
+                      'c
+                      (TIs (set (TArrow (TInt #t) (TInt #t)) (TArrow (TBool #t) (TBool #t))))
+                      'b
+                      (TArrow (TInt #t) (TInt #t)))
+                h))
