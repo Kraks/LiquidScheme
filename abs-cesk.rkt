@@ -5,6 +5,8 @@
 ; TODO add test cases
 
 (require rackunit)
+(require "pred.rkt")
+(require "parsers.rkt")
 (require "structs.rkt")
 
 (provide aval
@@ -12,7 +14,7 @@
          call2type)
 
 ; Currently using 1-CFA
-(define k (make-parameter 0))
+(define k (make-parameter 1))
 
 ; A callsite is consiste of the label of function
 ; and the continuation where the function returns to.
@@ -42,17 +44,19 @@
 (define mt-env (make-immutable-hash))
 
 ; Store : addr -> Set(value)
+(define d-bot (set))
+
 ; lookup-store : store addr -> Set(value)
 (define (lookup-store store addr)
   (if (hash-has-key? store addr)
       (hash-ref store addr)
-      (set)))
+      d-bot))
 
 ; store-update : store adddr Set(val) -> store
 (define (store-update store addr vals)
   (hash-update store addr
                (λ (d) (set-union d vals))
-               (set)))
+               d-bot))
 
 ; ext-store : store addr val -> store
 (define (ext-store store addr val)
@@ -75,13 +79,11 @@
   (define nexts
     (match s
       ; Int
-      ; TODO
       [(State (Int pred) env store k t)
-       (list (State (IntValue #t) env store k time*))]
+       (list (State (IntValue pred) env store k time*))]
       ; Bool
-      ; TODO
       [(State (Bool pred) env store k t)
-       (list (State (BoolValue #t) env store k time*))]
+       (list (State (BoolValue pred) env store k time*))]
       ; Void
       [(State (Void) env store k t)
        (list (State (VoidValue) env store k time*))]
@@ -120,8 +122,9 @@
       ; Plus: after evaluate right hand side
       [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
        (check-true (IntValue? r))
+       (define result (int+ l r))
        (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (IntValue #t) env store (Cont-k k) time*))]
+         (State result env store (Cont-k k) time*))]
       ; Minus
       [(State (Minus l r) env store k t)
        (define k-addr (KAddr (Minus l r) t))

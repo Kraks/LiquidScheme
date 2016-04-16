@@ -3,6 +3,8 @@
 (require rackunit)
 (require "structs.rkt")
 
+(provide int+)
+
 ; TODO inline/expand
 ; TODO DNF/CNF/NNF ?
 
@@ -170,12 +172,12 @@
      (match* ((norm/pand l) r)
        [((? PAnd? norm-l) _) (PNot (pred+ norm-l p))]
        [(norm-l _) (pred+ norm-l r)])]
-    [((POr _ _) (PAnd _ _)) (pred+ r l)]
+    ;[((POr _ _) (PAnd _ _)) (pred+ r l)]
     [((PNot _) (PAnd _ _)) (pred+ r l)]
     ;;;;;;;;;;;;;;;;
-    [((POr p11 p12) (POr p21 p22)) -1]
-    [((POr p11 p12) (PNot p)) -1]
-    [((PNot _) (POr _ _)) (pred+ r l)]
+    ;[((POr p11 p12) (POr p21 p22)) -1]
+    ;[((POr p11 p12) (PNot p)) -1]
+    ;[((PNot _) (POr _ _)) (pred+ r l)]
     ;;;;;;;;;;;;;;;;
     [((PNot p1) (PNot p2)) #t]
     [(_ _) (error 'pred+ "unknown predicate ~a ~a" l r)]))
