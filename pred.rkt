@@ -3,16 +3,31 @@
 (require rackunit)
 (require "structs.rkt")
 
-(provide int+)
+(provide int/+
+         int/eq)
 
 ; TODO inline/expand
 ; TODO DNF/CNF/NNF ?
 
-(define (int+ l r)
+(define (int/+ l r)
   (match* (l r)
-    [((IntValue p1) (IntValue p2)) (pred+ p1 p2)]
+    [((IntValue p1) (IntValue p2)) (IntValue (pred+ p1 p2))]
     [(_ _) (error 'int+ "not an integer")]))
 
+(define bools (set (BoolValue (True)) (BoolValue (False))))
+
+(define (int/eq l r)
+  (match* (l r)
+    [((IntValue (? number? l-num)) (IntValue (? number? r-num)))
+     (set (if (= l-num r-num)
+              (BoolValue (True))
+              (BoolValue (False))))]
+    [((IntValue (PGreater (PSelf) (? number? l-num)))
+      (IntValue (PGreater (? number? r-num) (PSelf))))
+     (if (> l-num r-num) (set (BoolValue (False)))
+         bools)]
+    [(_ _) bools]))
+    
 (define (swap/pand p)
   (match p [(PAnd l r) (PAnd r l)]))
 

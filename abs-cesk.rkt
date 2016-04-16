@@ -14,7 +14,7 @@
          call2type)
 
 ; Currently using 1-CFA
-(define k (make-parameter 1))
+(define k (make-parameter 0))
 
 ; A callsite is consiste of the label of function
 ; and the continuation where the function returns to.
@@ -48,9 +48,7 @@
 
 ; lookup-store : store addr -> Set(value)
 (define (lookup-store store addr)
-  (if (hash-has-key? store addr)
-      (hash-ref store addr)
-      d-bot))
+  (hash-ref store addr d-bot))
 
 ; store-update : store adddr Set(val) -> store
 (define (store-update store addr vals)
@@ -122,7 +120,7 @@
       ; Plus: after evaluate right hand side
       [(State (? valid-value? r) env store (DoPlusK l k-addr) t)
        (check-true (IntValue? r))
-       (define result (int+ l r))
+       (define result (int/+ l r))
        (for/list ([k (set->list (lookup-store store k-addr))])
          (State result env store (Cont-k k) time*))]
       ; Minus
@@ -160,7 +158,7 @@
        (define k-addr (KAddr (NumEq l r) t))
        (define new-store (ext-store store k-addr (Cont k)))
        (define new-k (NumEqK r env k-addr))
-       (list (State r env new-store new-k time*))]
+       (list (State l env new-store new-k time*))]
       ; NumEq: after evaluate left hand side
       [(State (? valid-value? l) env store (NumEqK r r-env k-addr) t)
        (check-true (IntValue? l))
@@ -168,8 +166,10 @@
       ; NumEq: after evaluate right hand side
       [(State (? valid-value? r) env store (DoNumEqK l k-addr) t)
        (check-true (IntValue? r))
-       (for/list ([k (set->list (lookup-store store k-addr))])
-         (State (BoolValue #t) env store (Cont-k k) time*))]
+       (define result (int/eq l r))
+       (flatten (for/list ([k (set->list (lookup-store store k-addr))])
+                  (for/list ([b (set->list result)])
+                    (State b env store (Cont-k k) time*))))]
       ; Logic and
       ; TODO logic operation actually allows non-boolean values
       [(State (And l r) env store k t)
@@ -226,8 +226,12 @@
       [(State (? valid-value? tst) env store (DoIfK thn els k-env k-addr) t)
        (check-true (BoolValue? tst))
        (define ks (set->list (lookup-store store k-addr)))
-       (append (for/list ([k ks]) (State thn k-env store (Cont-k k) time*))
-               (for/list ([k ks]) (State els k-env store (Cont-k k) time*)))]
+       (match (BoolValue-pred tst)
+         [(True) (for/list ([k ks]) (State thn k-env store (Cont-k k) time*))]
+         [(False) (for/list ([k ks]) (State els k-env store (Cont-k k) time*))]
+         [#t (append (for/list ([k ks]) (State thn k-env store (Cont-k k) time*))
+                     (for/list ([k ks]) (State els k-env store (Cont-k k) time*)))]
+         [_ (error 'state "(BoolValue #f)!")])]
       ; Set!
       [(State (Set var val) env store k t)
        (define k-addr (KAddr (Set var val) t))
@@ -295,8 +299,7 @@
       (hash-set! call2type
                  (Callsite label (State-kont s))
                  (TArrow (TArrow-arg cur-type)
-                            ; Note: the actual returned value should be Closure if the (State-exp s) is a Lambda
-                            (set-union (set (State-exp s)) (TArrow-ret cur-type))))))
+                         (set-union (set (State-exp s)) (TArrow-ret cur-type))))))
 
   ; return next states
   nexts)
@@ -305,16 +308,17 @@
   (State e mt-env mt-store (DoneK) '()))
 
 (define (explore f init)
-  (search f (set) (list init)))
+  (search f (set) (list init) 0 (list)))
 
-(define (search f seen todo)
-  (cond [(empty? todo) seen]
+(define (search f seen todo id result)
+  (displayln id)
+  (cond [(empty? todo) result]
         [(set-member? seen (first todo))
-         (search f seen (cdr todo))]
-        [else (let ([nexts (f (first todo))])
-                (search f
-                        (set-add seen (first todo))
-                        (append nexts (cdr todo))))]))
+         (search f seen (cdr todo) id result)]
+        [else (search f (set-add seen (first todo))
+                      (append (f (first todo)) (cdr todo))
+                      (add1 id)
+                      (cons (cons id (first todo)) result))]))
 
 ; exp -> [State]
 (define (aval e) (explore step (inject e)))
@@ -373,3 +377,10 @@
                 (hash 1 (set 'a 'b)))
   (check-equal? (ext-store (ext-store (ext-store mt-store 1 'a) 1 'b) 2 'c)
                 (hash 1 (set 'a 'b) 2 (set 'c))))
+
+;(aval-infer (parse '{{lambda add1 {x} {+ x 1}} 2}))
+
+#;
+(aval (parse '{let {{add1 {lambda add1 {x} {+ x 1}}}}
+                     {add1 2}}))
+call2type
