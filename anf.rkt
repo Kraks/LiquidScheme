@@ -2,7 +2,7 @@
 
 ; TODO callcc
 ; TODO logic operation actually allows non-boolean values
-; TODO do actual computation instead of using `bools`
+; TODO do actual computation instead of using `all-bools`
 
 (require rackunit)
 (require "pred.rkt")
@@ -70,16 +70,11 @@
 (define (tick s)
   (take (cons (State-exp s) (State-time s)) (k)))
 
-(define (atomic-value? v)
+(define (valid-value? v)
   (match v
     [(? IntValue?) #t]
     [(? BoolValue?) #t]
     [(? VoidValue?) #t]
-    [_ #f]))
-
-(define (valid-value? v)
-  (match v
-    [(? atomic-value?) #t]
     [(? Clo?) #t]
     [_ #f]))
 
@@ -116,28 +111,19 @@
             ([(k v) (in-hash s2)])
     (update-store* new-store k v)))
 
-;(define mt-store (make-immutable-hash))
-
 (define (eval-prim e env store)
   (match e
     [(Plus l r)
      (foldl set-union (set)
-           (flatten (for/list ([lv (set->list (eval-atom l env store))])
-                      (for/list ([rv (set->list (eval-atom r env store))])
-                        (int/+ lv rv)))))]
+            (flatten (for/list ([lv (set->list (eval-atom l env store))])
+                       (for/list ([rv (set->list (eval-atom r env store))])
+                         (int/+ lv rv)))))]
     [(NumEq l r)
      (foldl set-union (set)
-           (flatten (for/list ([lv (set->list (eval-atom l env store))])
-                      (for/list ([rv (set->list (eval-atom r env store))])
-                        (int/eq lv rv)))))]
+            (flatten (for/list ([lv (set->list (eval-atom l env store))])
+                       (for/list ([rv (set->list (eval-atom r env store))])
+                         (int/eq lv rv)))))]
     [else 'eval-prim "TODO"]))
-
-(define (prim? e)
-  (match e
-    [(Plus _ _) #t]
-    [(NumEq _ _) #t]
-    ;TODO
-    [else #f]))
 
 (define (eval-atom e env store)
   (match e
@@ -148,6 +134,13 @@
     [(Var x) (lookup-store (lookup-env env x))]
     [(Lam label x body) (set (Clo (Lam label x body) env))]
     [else (error 'eval-atom "not an atom expression")]))
+
+(define (prim? e)
+  (match e
+    [(Plus _ _) #t]
+    [(NumEq _ _) #t]
+    ;TODO
+    [else #f]))
 
 (define (atom? e)
   (match e
@@ -198,7 +191,7 @@
             (define new-k (EndK label arg-v k))
             (State body new-env new-k time*)]
            [else (error 'state "not a closure: ~a" fun-v)]))]
-      
+
       [(State (? valid-value? e) env (EndK label arg-v next-k) t)
        (hash-update! call2type label
                      (λ (d) (set-union d (set (TArrow arg-v e))))
@@ -213,17 +206,17 @@
        (list (State (IntValue #t) env k time*))]
       ; Logic and
       [(State (And l r) env k t)
-       (define result bools)
+       (define result all-bools)
        (for/list ([b result])
          (State b env store k time*))]
       ; Logic or
       [(State (Or l r) env k t)
-       (define result bools)
+       (define result all-bools)
        (for/list ([b result])
          (State b env k time*))]
       ; Logic not
       [(State (Not b) env k t)
-       (define result bools)
+       (define result all-bools)
        (for/list ([b result])
          (State b env k time*))]
       ; If
@@ -288,7 +281,7 @@
 
 #;
 (aval (parse '{let {{add1 {lambda add1 {x} {+ x 1}}}}
-                      {add1 2}}))
+                {add1 2}}))
 
 #;
 (aval-infer (parse '{let {{add {lambda add_x {x}
@@ -296,12 +289,6 @@
                                    {+ x y}}}}}
                       {let {{add1 {add 1}}}
                         {add1 2}}}))
-#;
-(aval (parse '{let {{add {lambda add_x {x}
-                           {lambda add_y {y}
-                             {+ x y}}}}}
-                {let {{add1 {add 1}}}
-                  {add1 2}}}))
 
 ;(aval-infer (parse '{{lambda add1 {x} {+ x 1}} 2}))
 
@@ -312,8 +299,6 @@
                       {let {{one {add1 0}}}
                         {let {{two {add1 one}}}
                           {+ one two}}}}))
-
-; TODO
 
 (define toten (parse '{letrec {{toten {λ toten {n}
                                         {let {{tst {= n 2}}}
@@ -340,3 +325,9 @@
           b}}}))
 
 ;(aval-infer standard-example)
+
+(define add1-h (parse '{let {{add1 {lambda add1 {x} {+ 1 x}}}}
+                         {let {{apply {lambda lamf {f} {lambda lamg {g} {f g}}}}}
+                           {let {{another_add1 {apply add1}}}
+                             {another_add1 1}}}}))
+(aval-infer add1-h)

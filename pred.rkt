@@ -5,17 +5,17 @@
 
 (provide int/+
          int/eq
-         bools)
+         all-bools)
 
 ; TODO inline/expand
 ; TODO DNF/CNF/NNF ?
 
+(define all-bools (set (BoolValue (True)) (BoolValue (False))))
+
 (define (int/+ l r)
   (match* (l r)
     [((IntValue p1) (IntValue p2)) (set (IntValue (pred+ p1 p2)))]
-    [(_ _) (error 'int+ "not an integer")]))
-
-(define bools (set (BoolValue (True)) (BoolValue (False))))
+    [(_ _) (error 'int/+ "not an integer")]))
 
 (define (int/eq l r)
   (match* (l r)
@@ -25,9 +25,10 @@
               (BoolValue (False))))]
     [((IntValue (PGreater (PSelf) (? number? l-num)))
       (IntValue (PGreater (? number? r-num) (PSelf))))
-     (if (> l-num r-num) (set (BoolValue (False)))
-         bools)]
-    [(_ _) bools]))
+     (if (> l-num r-num)
+         (set (BoolValue (False)))
+         all-bools)]
+    [(_ _) all-bools]))
     
 (define (swap/pand p)
   (match p [(PAnd l r) (PAnd r l)]))
