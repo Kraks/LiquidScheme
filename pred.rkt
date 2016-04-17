@@ -12,7 +12,7 @@
 
 (define (int/+ l r)
   (match* (l r)
-    [((IntValue p1) (IntValue p2)) (IntValue (pred+ p1 p2))]
+    [((IntValue p1) (IntValue p2)) (set (IntValue (pred+ p1 p2)))]
     [(_ _) (error 'int+ "not an integer")]))
 
 (define bools (set (BoolValue (True)) (BoolValue (False))))

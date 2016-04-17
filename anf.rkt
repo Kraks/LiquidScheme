@@ -1,8 +1,8 @@
 #lang racket
 
-; TODO regard all non-false values as true
 ; TODO callcc
-; TODO add test cases
+; TODO logic operation actually allows non-boolean values
+; TODO do actual computation instead of using `bools`
 
 (require rackunit)
 (require "pred.rkt")
@@ -14,6 +14,7 @@
          call2type)
 
 (struct Let (var val body) #:transparent)
+(struct Letrec (var val body) #:transparent)
 (struct LetK (var body env addr) #:transparent)
 (struct EndK (label arg addr) #:transparent)
 
@@ -37,10 +38,7 @@
     [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
     [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (Let lhs (parse rhs) (parse body))]
-    [`(letrec ((,lhs ,rhs)) ,body)
-     (parse `(let ((,lhs (void)))
-               (begin (set! ,lhs ,rhs)
-                      ,body)))]
+    [`(letrec ((,lhs ,rhs)) ,body) (Letrec lhs (parse rhs) (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 ; label -> set(ArrowType)
@@ -79,29 +77,50 @@
 (define (lookup-store store addr)
   (hash-ref store addr d-bot))
 
-; store-update : store adddr Set(val) -> store
-(define (store-update store addr vals)
+; update-store* : store adddr Set(val) -> store
+(define (update-store* store addr vals)
   (hash-update store addr
                (λ (d) (set-union d vals))
                d-bot))
 
-; ext-store : store addr val -> store
-(define (ext-store store addr val)
-  (store-update store addr (set val)))
+; update-store : store addr val -> store
+(define (update-store store addr val)
+  (update-store* store addr (set val)))
 
 ; store-join : store store -> store
 (define (store-join s1 s2)
   (for/fold ([new-store s1])
             ([(k v) (in-hash s2)])
-    (store-update new-store k v)))
+    (update-store* new-store k v)))
 
 (define mt-store (make-immutable-hash))
+
+(define (eval-prim e env store)
+  (match e
+    [(Plus l r)
+     (foldl set-union (set)
+           (flatten (for/list ([lv (set->list (eval-atom l env store))])
+                      (for/list ([rv (set->list (eval-atom r env store))])
+                        (int/+ lv rv)))))]
+    [(NumEq l r)
+     (foldl set-union (set)
+           (flatten (for/list ([lv (set->list (eval-atom l env store))])
+                      (for/list ([rv (set->list (eval-atom r env store))])
+                        (int/eq lv rv)))))]
+    [else 'eval-prim "TODO"]))
+
+(define (prim? e)
+  (match e
+    [(Plus _ _) #t]
+    [(NumEq _ _) #t]
+    [else #f]))
 
 (define (eval-atom e env store)
   (match e
     [(Int pred) (set (IntValue pred))]
     [(Bool pred) (set (BoolValue pred))]
     [(Void) (set (VoidValue))]
+    [(? prim?) (eval-prim e env store)]
     [(Var x) (lookup-store store (lookup-env env x))]
     [(Lam label x body) (set (Clo (Lam label x body) env))]
     [else (error 'eval-atom "not an atom expression")]))
@@ -113,6 +132,7 @@
     [(Void) #t]
     [(Var _) #t]
     [(Lam _ _ _) #t]
+    [(? prim? e) #t]
     [else #f]))
 
 ; step : state -> [state]
@@ -126,14 +146,20 @@
       [(State (Let var val body) env store k t)
        (define k-addr (KAddr (Let var val body) t))
        (define new-k (LetK var body env k-addr))
-       (define new-store (ext-store store k-addr (Cont k)))
+       (define new-store (update-store store k-addr (Cont k)))
        (list (State val env new-store new-k time*))]
       [(State (? valid-value? val) env store (LetK var body env* k-addr) t)
        (define v-addr (BAddr var t))
        (define new-env (ext-env env* var v-addr))
-       (define new-store (ext-store store v-addr val))
+       (define new-store (update-store store v-addr val))
        (for/list ([k (set->list (lookup-store store k-addr))])
          (State body new-env new-store (Cont-k k) time*))]
+      [(State (Letrec var val body) env store k t)
+       (define v-addr (BAddr var t))
+       (define new-env (ext-env env var v-addr))
+       (define v (eval-atom val new-env store))
+       (define new-store (update-store* store v-addr v))
+       (list (State body new-env new-store k t))]
       [(State (App fun arg) env store k t)
        (define fun-vs (eval-atom fun env store))
        (for/list ([fun-v (set->list fun-vs)])
@@ -143,36 +169,22 @@
             (define arg-v (set-first (eval-atom arg env store)))
             (define v-addr (BAddr x t))
             (define new-env (ext-env env* x v-addr))
-            (define new-store (ext-store store v-addr arg-v))
+            (define new-store (update-store store v-addr arg-v))
             (define new-k (EndK label arg-v k))
             (State body new-env new-store new-k time*)]
-           [else (error 'state "not a closure")]))]
+           [else (error 'state "not a closure: ~a" fun-v)]))]
       [(State (? valid-value? e) env store (EndK label arg-v next-k) t)
-       ;(printf "~a: ~a -> ~a\n" label arg-v e)
-       (hash-update! call2type
-                     label
+       (hash-update! call2type label
                      (λ (d) (set-union d (set (TArrow arg-v e))))
                      (set))
        (list (State e env store next-k t))]
-      ; Plus
-      [(State (Plus l r) env store k t)
-       (flatten (for/list ([lv (eval-atom l env store)])
-                  (for/list ([rv (eval-atom r env store)])
-                    (State (int/+ lv rv) env store k time*))))]
       ; Minus
       [(State (Minus l r) env store k t)
        (list (State (IntValue #t) env store k time*))]
       ; Mult
       [(State (Mult l r) env store k t)
        (list (State (IntValue #t) env store k time*))]
-      ; NumEq
-      [(State (NumEq l r) env store k t)
-       (define result (int/eq l r))
-       (for/list ([b result])
-         (State b env store k time*))]
       ; Logic and
-      ; TODO logic operation actually allows non-boolean values
-      ; TODO do actual computation instead of using `bools`
       [(State (And l r) env store k t)
        (define result bools)
        (for/list ([b result])
@@ -189,7 +201,7 @@
          (State b env store k time*))]
       ; If
       [(State (If tst thn els) env store k t)
-       (define tst-v bools)
+       (define tst-v (eval-atom tst env store))
        (for/list ([b tst-v])
          (match b
            [(BoolValue (True)) (State thn env store k time*)]
@@ -206,7 +218,7 @@
   (search f (set) (list init) 0 (list)))
 
 (define (search f seen todo id result)
-  ;(displayln id)
+  (displayln id)
   (cond [(empty? todo) result]
         [(set-member? seen (first todo))
          (search f seen (cdr todo) id result)]
@@ -275,6 +287,16 @@
                         {let {{two {add1 one}}}
                           {+ one two}}}}))
 
+; TODO
+#;
+(define toten (parse '{letrec {{toten {λ toten {n}
+                                        {let {{tst {= n 2}}}
+                                          {if tst
+                                              false
+                                              {toten {+ n 1}}}}}}}
+                        {toten 1}}))
+;(aval-infer toten)
+
 #;
 (aval-infer (parse '{{lambda lamx {x} x} {lambda lamy {y} y}}))
 
@@ -284,3 +306,12 @@
                         {let {[t {id true}]}
                           {let {[fls {not t}]}
                             fls}}}}))
+#;
+(define standard-example
+  (parse
+   '{let {{id {lambda id {x} x}}}
+      {let {{a {id {lambda lamz {z} z}}}}
+        {let {{b {id {lambda lamy {y} y}}}}
+          b}}}))
+
+;(aval-infer standard-example)
