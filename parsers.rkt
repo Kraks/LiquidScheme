@@ -76,8 +76,8 @@
 
 (define (parse exp)
   (match exp
-    ['true (Bool #t)]
-    ['false (Bool #f)]
+    ['true (Bool (True))]
+    ['false (Bool (False))]
     ['(void) (Void)]
     [(? integer? n) (Int n)]
     [(? symbol?) (Var exp)]
