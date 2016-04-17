@@ -4,7 +4,8 @@
 (require "structs.rkt")
 
 (provide int/+
-         int/eq)
+         int/eq
+         bools)
 
 ; TODO inline/expand
 ; TODO DNF/CNF/NNF ?
@@ -46,7 +47,7 @@
     [(PNot (? PAnd? pa))
      (match (norm/pand pa)
        [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf))) -1])]
-        
+
     [(PNot (PGreater (PSelf) (? number? n))) -1]
     [(PNot (PGreater (? number? n) (PSelf))) -1]))
 
