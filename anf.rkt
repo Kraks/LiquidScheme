@@ -18,6 +18,8 @@
 (struct LetK (var body env addr) #:transparent)
 (struct EndK (label arg addr) #:transparent)
 
+(struct State (exp env kont time) #:transparent)
+
 (define (parse exp)
   (match exp
     ['true (Bool (True))]
@@ -73,27 +75,30 @@
 ; Store : addr -> Set(value)
 (define d-bot (set))
 
+(define store (make-hash))
+
 ; lookup-store : store addr -> Set(value)
-(define (lookup-store store addr)
+(define (lookup-store addr)
   (hash-ref store addr d-bot))
 
 ; update-store* : store adddr Set(val) -> store
-(define (update-store* store addr vals)
-  (hash-update store addr
+(define (update-store!* addr vals)
+  (hash-update! store addr
                (λ (d) (set-union d vals))
                d-bot))
 
 ; update-store : store addr val -> store
-(define (update-store store addr val)
-  (update-store* store addr (set val)))
+(define (update-store! addr val)
+  (update-store!* addr (set val)))
 
 ; store-join : store store -> store
+#;
 (define (store-join s1 s2)
   (for/fold ([new-store s1])
             ([(k v) (in-hash s2)])
     (update-store* new-store k v)))
 
-(define mt-store (make-immutable-hash))
+;(define mt-store (make-immutable-hash))
 
 (define (eval-prim e env store)
   (match e
@@ -113,6 +118,7 @@
   (match e
     [(Plus _ _) #t]
     [(NumEq _ _) #t]
+    ;TODO
     [else #f]))
 
 (define (eval-atom e env store)
@@ -121,7 +127,7 @@
     [(Bool pred) (set (BoolValue pred))]
     [(Void) (set (VoidValue))]
     [(? prim?) (eval-prim e env store)]
-    [(Var x) (lookup-store store (lookup-env env x))]
+    [(Var x) (lookup-store (lookup-env env x))]
     [(Lam label x body) (set (Clo (Lam label x body) env))]
     [else (error 'eval-atom "not an atom expression")]))
 
@@ -137,30 +143,31 @@
 
 ; step : state -> [state]
 (define (step s)
+  ;(printf "~a\n" s)
   (define time* (tick s))
   (define nexts
     (match s
-      [(State (? atom? e) env store k t)
+      [(State (? atom? e) env k t)
        (for/list ([v (set->list (eval-atom e env store))])
-         (State v env store k time*))]
-      [(State (Let var val body) env store k t)
+         (State v env k time*))]
+      [(State (Let var val body) env k t)
        (define k-addr (KAddr (Let var val body) t))
        (define new-k (LetK var body env k-addr))
-       (define new-store (update-store store k-addr (Cont k)))
-       (list (State val env new-store new-k time*))]
-      [(State (? valid-value? val) env store (LetK var body env* k-addr) t)
+       (update-store! k-addr (Cont k))
+       (list (State val env new-k time*))]
+      [(State (? valid-value? val) env (LetK var body env* k-addr) t)
        (define v-addr (BAddr var t))
        (define new-env (ext-env env* var v-addr))
-       (define new-store (update-store store v-addr val))
-       (for/list ([k (set->list (lookup-store store k-addr))])
-         (State body new-env new-store (Cont-k k) time*))]
-      [(State (Letrec var val body) env store k t)
+       (update-store! v-addr val)
+       (for/list ([k (set->list (lookup-store k-addr))])
+         (State body new-env (Cont-k k) time*))]
+      [(State (Letrec var val body) env k t)
        (define v-addr (BAddr var t))
        (define new-env (ext-env env var v-addr))
        (define v (eval-atom val new-env store))
-       (define new-store (update-store* store v-addr v))
-       (list (State body new-env new-store k t))]
-      [(State (App fun arg) env store k t)
+       (update-store!* v-addr v)
+       (list (State body new-env k t))]
+      [(State (App fun arg) env k t)
        (define fun-vs (eval-atom fun env store))
        (for/list ([fun-v (set->list fun-vs)])
          (match fun-v
@@ -169,56 +176,58 @@
             (define arg-v (set-first (eval-atom arg env store)))
             (define v-addr (BAddr x t))
             (define new-env (ext-env env* x v-addr))
-            (define new-store (update-store store v-addr arg-v))
+            (define new-store (update-store! v-addr arg-v))
             (define new-k (EndK label arg-v k))
-            (State body new-env new-store new-k time*)]
+            (State body new-env new-k time*)]
            [else (error 'state "not a closure: ~a" fun-v)]))]
-      [(State (? valid-value? e) env store (EndK label arg-v next-k) t)
+      
+      [(State (? valid-value? e) env (EndK label arg-v next-k) t)
        (hash-update! call2type label
                      (λ (d) (set-union d (set (TArrow arg-v e))))
                      (set))
-       (list (State e env store next-k t))]
+       (list (State e env next-k t))]
+      
       ; Minus
-      [(State (Minus l r) env store k t)
-       (list (State (IntValue #t) env store k time*))]
+      [(State (Minus l r) env k t)
+       (list (State (IntValue #t) env k time*))]
       ; Mult
-      [(State (Mult l r) env store k t)
-       (list (State (IntValue #t) env store k time*))]
+      [(State (Mult l r) env k t)
+       (list (State (IntValue #t) env k time*))]
       ; Logic and
-      [(State (And l r) env store k t)
+      [(State (And l r) env k t)
        (define result bools)
        (for/list ([b result])
          (State b env store k time*))]
       ; Logic or
-      [(State (Or l r) env store k t)
+      [(State (Or l r) env k t)
        (define result bools)
        (for/list ([b result])
-         (State b env store k time*))]
+         (State b env k time*))]
       ; Logic not
-      [(State (Not b) env store k t)
+      [(State (Not b) env k t)
        (define result bools)
        (for/list ([b result])
-         (State b env store k time*))]
+         (State b env k time*))]
       ; If
-      [(State (If tst thn els) env store k t)
+      [(State (If tst thn els) env k t)
        (define tst-v (eval-atom tst env store))
        (for/list ([b tst-v])
          (match b
-           [(BoolValue (True)) (State thn env store k time*)]
-           [(BoolValue (False)) (State els env store k time*)]))]
+           [(BoolValue (True)) (State thn env k time*)]
+           [(BoolValue (False)) (State els env k time*)]))]
       ; Anything else
       [s (list s)]))
   ; return next states
   nexts)
 
 (define (inject e)
-  (State e mt-env mt-store (DoneK) '()))
+  (State e mt-env (DoneK) '()))
 
 (define (explore f init)
   (search f (set) (list init) 0 (list)))
 
 (define (search f seen todo id result)
-  (displayln id)
+  ;(displayln id)
   (cond [(empty? todo) result]
         [(set-member? seen (first todo))
          (search f seen (cdr todo) id result)]
@@ -288,7 +297,7 @@
                           {+ one two}}}}))
 
 ; TODO
-#;
+
 (define toten (parse '{letrec {{toten {λ toten {n}
                                         {let {{tst {= n 2}}}
                                           {if tst
@@ -297,8 +306,7 @@
                         {toten 1}}))
 ;(aval-infer toten)
 
-#;
-(aval-infer (parse '{{lambda lamx {x} x} {lambda lamy {y} y}}))
+;(aval-infer (parse '{{lambda lamx {x} x} {lambda lamy {y} y}}))
 
 #;
 (aval-infer (parse '{let {[id {lambda id {x} x}]}
@@ -306,7 +314,7 @@
                         {let {[t {id true}]}
                           {let {[fls {not t}]}
                             fls}}}}))
-#;
+
 (define standard-example
   (parse
    '{let {{id {lambda id {x} x}}}
