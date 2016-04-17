@@ -19,8 +19,8 @@
 
 (define (parse exp)
   (match exp
-    ['true (Bool #t)]
-    ['false (Bool #f)]
+    ['true (Bool (True))]
+    ['false (Bool (False))]
     ['(void) (Void)]
     [(? integer? n) (Int n)]
     [(? symbol?) (Var exp)]
@@ -47,7 +47,7 @@
 (define call2type (make-hash))
 
 ; Currently using 1-CFA
-(define k (make-parameter 0))
+(define k (make-parameter 1))
 
 (define (tick s)
   (take (cons (State-exp s) (State-time s)) (k)))
@@ -221,6 +221,9 @@
 ; TODO
 (define (pred->string p)
   (match p
+    [#t "any"]
+    [(True) "true"]
+    [(False) "false"]
     [(? number?) (number->string p)]
     [else ""]))
 
@@ -266,6 +269,7 @@
 
 ;(aval-infer (parse '{{lambda if {x} {if x true 2}} true}))
 
+#;
 (aval-infer (parse '{let {{add1 {lambda add1 {x} {+ x 1}}}}
                       {let {{one {add1 0}}}
                         {let {{two {add1 one}}}
@@ -273,3 +277,10 @@
 
 #;
 (aval-infer (parse '{{lambda lamx {x} x} {lambda lamy {y} y}}))
+
+#;
+(aval-infer (parse '{let {[id {lambda id {x} x}]}
+                      {let {[one {id 1}]}
+                        {let {[t {id true}]}
+                          {let {[fls {not t}]}
+                            fls}}}}))
