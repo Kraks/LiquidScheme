@@ -13,6 +13,26 @@
          aval-infer
          call2type)
 
+#|
+ lam ::= (λ (var) exp)
+
+ aexp ::= lam
+       |  var
+       |  true  |  false
+       |  integer
+       |  (prim aexp*)
+
+ cexp ::= (aexp0 aexp1)
+       |  (if aexp exp exp)
+       |  (letrec ((var aexp)) exp)
+
+ exp ::= aexp
+      |  cexp
+      |  (let ((var exp)) exp)
+
+ prim ::= +  |  -  |  *  |  = | and | or | not
+|#
+
 (struct Let (var val body) #:transparent)
 (struct Letrec (var val body) #:transparent)
 (struct LetK (var body env addr) #:transparent)
@@ -34,9 +54,7 @@
     [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
     [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
     [`(not ,bl) (Not (parse bl))]
-    [`(set! ,var ,val) (Set var (parse val))]
     [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
-    [`(begin ,s1 ,s2) (Begin (parse s1) (parse s2))]
     [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
     [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
     [`(let ((,lhs ,rhs)) ,body) (Let lhs (parse rhs) (parse body))]
@@ -210,8 +228,7 @@
          (State b env k time*))]
       ; If
       [(State (If tst thn els) env k t)
-       (define tst-v (eval-atom tst env store))
-       (for/list ([b tst-v])
+       (for/list ([b (eval-atom tst env store)])
          (match b
            [(BoolValue (True)) (State thn env k time*)]
            [(BoolValue (False)) (State els env k time*)]))]
