@@ -381,6 +381,6 @@
 ;(aval-infer (parse '{{lambda add1 {x} {+ x 1}} 2}))
 
 #;
-(aval (parse '{let {{add1 {lambda add1 {x} {+ x 1}}}}
+(aval-infer (parse '{let {{add1 {lambda add1 {x} {+ x 1}}}}
                      {add1 2}}))
 call2type
