@@ -111,20 +111,44 @@
             ([(k v) (in-hash s2)])
     (update-store* new-store k v)))
 
+; set set (a a -> set) -> set
+(define (do-for-all-pairs s1 s2 op)
+  (foldl set-union (set)
+         (flatten (for/list ([lv s1])
+                    (for/list ([rv s2])
+                      (op lv rv))))))
+
+; expr env store -> set
 (define (eval-prim e env store)
   (match e
     [(Plus l r)
-     (foldl set-union (set)
-            (flatten (for/list ([lv (set->list (eval-atom l env store))])
-                       (for/list ([rv (set->list (eval-atom r env store))])
-                         (int/+ lv rv)))))]
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       int/+)]
+    [(Minus l r)
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       int/-)]
+    [(Mult l r)
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       int/*)]
+    [(And l r)
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       bool/and)]
+    [(Or l r)
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       bool/or)]
     [(NumEq l r)
-     (foldl set-union (set)
-            (flatten (for/list ([lv (set->list (eval-atom l env store))])
-                       (for/list ([rv (set->list (eval-atom r env store))])
-                         (int/eq lv rv)))))]
-    [else 'eval-prim "TODO"]))
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       int/eq)]
+    [(Not b) (bool/not b)]
+    [else 'eval-prim "not a primitive operator"]))
 
+; expr env store -> set
 (define (eval-atom e env store)
   (match e
     [(Int pred) (set (IntValue pred))]
@@ -138,8 +162,12 @@
 (define (prim? e)
   (match e
     [(Plus _ _) #t]
+    [(Minus _ _) #t]
+    [(Mult _ _) #t]
+    [(And _ _) #t]
+    [(Or _ _) #t]
+    [(Not _) #t]
     [(NumEq _ _) #t]
-    ;TODO
     [else #f]))
 
 (define (atom? e)
@@ -198,27 +226,6 @@
                      (set))
        (list (State e env next-k t))]
       
-      ; Minus
-      [(State (Minus l r) env k t)
-       (list (State (IntValue #t) env k time*))]
-      ; Mult
-      [(State (Mult l r) env k t)
-       (list (State (IntValue #t) env k time*))]
-      ; Logic and
-      [(State (And l r) env k t)
-       (define result all-bools)
-       (for/list ([b result])
-         (State b env store k time*))]
-      ; Logic or
-      [(State (Or l r) env k t)
-       (define result all-bools)
-       (for/list ([b result])
-         (State b env k time*))]
-      ; Logic not
-      [(State (Not b) env k t)
-       (define result all-bools)
-       (for/list ([b result])
-         (State b env k time*))]
       ; If
       [(State (If tst thn els) env k t)
        (for/list ([b (eval-atom tst env store)])
