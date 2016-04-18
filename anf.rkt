@@ -211,11 +211,10 @@
        (for/list ([fun-v (set->list fun-vs)])
          (match fun-v
            [(Clo (Lam label x body) env*)
-            ;TODO FIXME, may have many values
-            (define arg-v (set-first (eval-atom arg env store)))
+            (define arg-v (eval-atom arg env store))
             (define v-addr (BAddr x t))
             (define new-env (ext-env env* x v-addr))
-            (define new-store (update-store! v-addr arg-v))
+            (define new-store (update-store!* v-addr arg-v))
             (define new-k (EndK label arg-v k))
             (State body new-env new-k time*)]
            [else (error 'state "not a closure: ~a" fun-v)]))]
@@ -280,7 +279,9 @@
     (printf "~a: \n" label)
     (for/set ([type types])
       (printf "    ~a -> ~a\n"
-              (value->string (TArrow-arg type))
+              (if (= 1 (set-count (TArrow-arg type)))
+                  (value->string (set-first (TArrow-arg type)))
+                  (string-append "(" (string-join (map value->string (set->list (TArrow-arg type)))) ")"))
               (value->string (TArrow-ret type)))))
   "Done")
 
