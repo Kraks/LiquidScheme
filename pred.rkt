@@ -85,8 +85,8 @@
     [(PNot (PNot p1)) (norm/pnot p1)]
     [(PNot (? PAnd? pa))
      (match (norm/pand pa)
-       [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf))) -1])]
-
+       [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf))) -1]
+       [normed (norm/pnot (PNot normed))])]
     [(PNot (PGreater (PSelf) (? number? n))) -1]
     [(PNot (PGreater (? number? n) (PSelf))) -1]))
 
