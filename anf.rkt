@@ -336,7 +336,7 @@
 
 (define add1-h (parse '{let {{add1 {lambda add1 {x} {+ 1 x}}}}
                          {let {{add2 {lambda add2 {x} {+ 2 x}}}}
-                           {let {{apply {lambda lamf {f} {lambda lamg {g} {f g}}}}}
+                           {let {{apply {lambda applyf {f} {lambda applyg {g} {f g}}}}}
                              {let {{another_add1 {apply add1}}}
                                {let {{another_add2 {apply add2}}}
                                  {let {{two {another_add1 1}}}

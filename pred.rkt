@@ -17,37 +17,44 @@
 
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
 
+; IntValue IntValue -> Set(IntValue)
 (define (int/+ l r)
   (match* (l r)
     [((IntValue p1) (IntValue p2)) (set (IntValue (pred+ p1 p2)))]
     [(_ _) (error 'int/+ "not an integer")]))
 
+; IntValue IntValue -> Set(IntValue)
 (define (int/- l r)
   (match* (l r)
     [((IntValue p1) (IntValue p2)) (Set (IntValue #t))]
     [(_ _) (error 'int/- "not an integer")]))
 
+; IntValue IntValue -> Set(IntValue)
 (define (int/* l r)
   (match* (l r)
     [((IntValue p1) (IntValue p2)) (Set (IntValue #t))]
     [(_ _) (error 'int/* "not an integer")]))
 
+; BoolValue BoolValue -> Set(BoolValue)
 (define (bool/and l r)
   (match* (l r)
     [((BoolValue p1) (BoolValue p2)) all-bools]
     [(_ _) (error 'bool/and "not an bool")]))
 
+; BoolValue BoolValue -> Set(BoolValue)
 (define (bool/or l r)
   (match* (l r)
     [((BoolValue p1) (BoolValue p2)) all-bools]
     [(_ _) (error 'bool/and "not an bool")]))
 
+; BoolValue -> Set(BoolValue)
 (define (bool/not b)
   (match b
     [(BoolValue (True)) (set (BoolValue (False)))]
     [(BoolValue (False)) (set (BoolValue (True)))]
     [_ (error 'bool/not "not a bool")]))
 
+; IntValue IntValue -> Set(BoolValue)
 (define (int/eq l r)
   (match* (l r)
     [((IntValue (? number? l-num)) (IntValue (? number? r-num)))
