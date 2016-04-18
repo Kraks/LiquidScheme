@@ -211,11 +211,11 @@
        (for/list ([fun-v (set->list fun-vs)])
          (match fun-v
            [(Clo (Lam label x body) env*)
-            (define arg-v (eval-atom arg env store))
+            (define arg-vs (eval-atom arg env store))
             (define v-addr (BAddr x t))
             (define new-env (ext-env env* x v-addr))
-            (define new-store (update-store!* v-addr arg-v))
-            (define new-k (EndK label arg-v k))
+            (define new-store (update-store!* v-addr arg-vs))
+            (define new-k (EndK label arg-vs k))
             (State body new-env new-k time*)]
            [else (error 'state "not a closure: ~a" fun-v)]))]
 
