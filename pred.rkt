@@ -20,8 +20,40 @@
 ; IntValue IntValue -> Set(IntValue)
 (define (int/+ l r)
   (match* (l r)
-    [((IntValue p1) (IntValue p2)) (set (IntValue (pred+ p1 p2)))]
+    [((IntValue p1) (IntValue p2)) (set (IntValue (pred/+ p1 p2)))]
     [(_ _) (error 'int/+ "not an integer")]))
+
+; Predicate Predicate -> Predicate
+(define (pred/+ p1 p2)
+  (match* (p1 p2)
+    [((? number?) (? number?)) (+ p1 p2)]
+    [((? number? l) (PGreater (PSelf) (? number? r)))
+     (PGreater (PSelf) (+ l r))]
+    [((? number? l) (PGreater (? number? r) (PSelf)))
+     (PGreater (+ l r) (PSelf))]
+    [((? number? l) (PAnd (PGreater (PSelf) (? number? r1))
+                          (PGreater (? number? r2) (PSelf))))
+     (PAnd (PGreater (PSelf) (+ l r1))
+           (PGreater (+ l r2) (PSelf)))]
+    ;;;;;;
+    [((? PGreater? l) (? number? r))
+     (pred/+ r l)]
+    [((PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
+     (PGreater (PSelf) (+ l-num r-num))]
+    [((PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
+     #t]
+    [((PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
+     (PGreater (+ l-num r-num) (PSelf))]
+    [((PGreater (? number? l-num) (PSelf)) (PGreater (PSelf) (? number? r-num)))
+     (pred+ r l)]
+    [((PGreater (PSelf) (? number? l-num)) (PAnd (PGreater (PSelf) (? number? r1))
+                                                 (PGreater (? number? r2) (PSelf))))
+     (PGreater (PSelf) (+ l-num r1))]
+    [((PGreater (? number? l-num) (PSelf)) (PAnd (PGreater (PSelf) (? number? r1))
+                                                 (PGreater (? number? r2) (PSelf))))
+     (PGreater (+ l-num r2) (PSelf))]
+    ;TODO
+    [else "TODO"]))
 
 ; IntValue -> Set(IntValue)
 (define (de/or i)
