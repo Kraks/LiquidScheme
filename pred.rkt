@@ -23,6 +23,170 @@
     [((IntValue p1) (IntValue p2)) (set (IntValue (pred+ p1 p2)))]
     [(_ _) (error 'int/+ "not an integer")]))
 
+; IntValue -> Set(IntValue)
+(define (de/or i)
+  ; Predicate -> [Predicate]
+  (define (aux pred)
+    (match pred
+      [(POr p1 p2) (flatten (list (aux p1) (aux p2)))]
+      [(PAnd p1 p2)
+       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
+         (PAnd (first pair) (second pair)))]
+      [(PNot p) (map PNot (aux p))]
+      [p (list p)]))
+  (define preds (aux (IntValue-pred i)))
+  (list->set (map IntValue preds)))
+
+; IntValue -> Set(IntValue)
+(define (de/not i)
+  ; Predicate -> [Predicate]
+  (define (aux pred)
+    (match pred
+      [(PNot (? number? m))
+       (list (PGreater (PSelf) m) (PGreater m (PSelf)))]
+      [(PNot (PGreater (PSelf) m))
+       (list m (PGreater m (PSelf)))]
+      [(PNot (PGreater m (PSelf)))
+       (list m (PGreater (PSelf) m))]
+      [(PNot (PAnd p1 p2))
+       (append (aux (PNot p1)) (aux (PNot p2)))]
+      [(PAnd p1 p2)
+       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
+         (PAnd (first pair) (second pair)))]
+      [p (list p)]))
+  (define preds (aux (IntValue-pred i)))
+  (list->set (map IntValue preds)))
+
+; Predicate -> Predicate
+(define (reorder-pand pred)
+  (match pred
+    [(PAnd (? PGreater? l) (? number? r))
+     (PAnd r l)]
+    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
+     (swap/pand pred)]
+    [(PAnd l r) (PAnd (reorder-pand l) (reorder-pand r))]
+    [p p]))
+
+; Predicate -> Boolean
+(define (is-valid-pred? pred)
+  (match pred
+    [(PAnd (? number? m) (? number? n))
+     (= m n)]
+    [(PAnd (? number? m) (PGreater (PSelf) (? number? n)))
+     (> m n)]
+    [(PAnd (? number? m) (PGreater (? number? n) (PSelf)))
+     (< m n)]
+    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
+     (<= l-num r-num)]
+    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
+                 (PGreater (? number? u1) (PSelf)))
+           (PAnd (PGreater (PSelf) (? number? l2))
+                 (PGreater (? number? u2) (PSelf))))
+     (or (and (>= l1 l2) (>= u2 u1))
+         (and (>= l2 l1) (>= u1 u2))
+         (and (>= u1 l2) (>= u2 l1) (>= l2 l1) (>= u2 u1))
+         (and (>= u2 l1) (>= u1 l2) (>= l1 l2) (>= u1 u2)))]
+    [(PAnd l r) (and (is-valid-pred? l) (is-valid-pred? r))]
+    [else #t]))
+
+; Predicate -> Predicate
+(define (reduce pred)
+  (match pred
+    [(PAnd (? number? m) (PGreater _ _))
+     m]
+    [(PAnd (PGreater (PSelf) (? number? m))
+           (PGreater (PSelf) (? number? n)))
+     (PGreater (PSelf) (max m n))]
+    [(PAnd (PGreater (? number? m) (PSelf))
+           (PGreater (? number? n) (PSelf)))
+     (PGreater (min m n) (PSelf))]
+    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
+                 (PGreater (? number? u1) (PSelf)))
+           (PAnd (PGreater (PSelf) (? number? l2))
+                 (PGreater (? number? u2) (PSelf))))
+     (cond
+       [(and (>= l1 l2) (>= u2 u1))
+        (PAnd (PGreater (PSelf) l1)
+              (PGreater u1 (PSelf)))]
+       [(and (>= l2 l1) (>= u1 u2))
+        (PAnd (PGreater (PSelf) l2)
+              (PGreater u2 (PSelf)))]
+       [(and (>= u1 l2) (>= u2 l1) (>= l2 l1) (>= u2 u1))
+        (PAnd (PGreater (PSelf) l2)
+              (PGreater u1 (PSelf)))]
+       [(and (>= u2 l1) (>= u1 l2) (>= l1 l2) (>= u1 u2))
+        (PAnd (PGreater (PSelf) l1)
+              (PGreater u2 (PSelf)))]
+       [else (error 'reduce "never should happend")])]
+    [(PAnd (PGreater (PSelf) (? number?))
+           (PGreater (? number?) (PSelf)))
+     pred]
+    [(PAnd (? PAnd? l) (? PAnd? r))
+     (reduce (PAnd (reduce l) (reduce r)))]
+    [p p]))
+
+(module+ test
+  (is-valid-pred? (PAnd 3 (PGreater (PSelf) 2)))
+  (is-valid-pred? (PAnd 3 (PGreater 4 (PSelf))))
+  (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 1)
+                              (PGreater 9 (PSelf)))
+                        (PAnd (PGreater (PSelf) 0)
+                              (PGreater 5 (PSelf)))))
+  (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
+                              (PGreater 5 (PSelf)))
+                        (PAnd (PGreater (PSelf) 1)
+                              (PGreater 9 (PSelf)))))
+  (is-valid-pred? (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+  (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                        (PAnd (PGreater (PSelf) 0)
+                              (PGreater (PSelf) 1))))
+  (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                        (PAnd (PGreater (PSelf) 1)
+                              (PGreater 0 (PSelf)))))
+  (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
+                              (PGreater 5 (PSelf)))
+                        (PAnd (PGreater (PSelf) 6)
+                              (PGreater 9 (PSelf)))))
+  (is-valid-pred? (PAnd 1 2))
+  (is-valid-pred? (PAnd 1 (PGreater (PSelf) 3)))
+  
+  (reduce (PAnd 3 (PGreater (PSelf) 2)))
+  (reduce (PAnd 3 (PGreater 4 (PSelf))))
+  (reduce (PAnd (PAnd (PGreater (PSelf) 1)
+                      (PGreater 9 (PSelf)))
+                (PAnd (PGreater (PSelf) 0)
+                      (PGreater 5 (PSelf)))))
+  (reduce (PAnd (PAnd (PGreater (PSelf) 0)
+                      (PGreater 5 (PSelf)))
+                (PAnd (PGreater (PSelf) 1)
+                      (PGreater 9 (PSelf)))))
+  (reduce (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+  (reduce (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                (PAnd (PGreater (PSelf) 0)
+                      (PGreater (PSelf) 1))))
+  
+  (de/not (IntValue 1))
+  (de/not (IntValue (PNot 1)))
+  (de/not (IntValue (PNot (PGreater (PSelf) 3))))
+  (de/not (IntValue (PNot (PGreater 3 (PSelf)))))
+  (de/not (IntValue (PNot (PAnd (PGreater (PSelf) 3)
+                                (PGreater 5 (PSelf))))))
+  (de/not (IntValue (PAnd (PNot 3) (PNot 5))))
+  
+  (de/or (IntValue 1))
+  (de/or (IntValue (POr 1 2)))
+  (de/or (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf)))))
+  (de/or (IntValue (PNot 2)))
+  (de/or (IntValue (PGreater (PSelf) 2)))
+  (de/or (IntValue (PGreater 3 (PSelf))))
+  (de/or (IntValue (PAnd (POr (PGreater (PSelf) 5)
+                              (PGreater 0 (PSelf)))
+                         (POr 1 6))))
+  (de/or (IntValue (POr (PNot 3) (PNot 4))))
+  (de/or (IntValue (PAnd (POr 3 (PGreater (PSelf) 5))
+                         (PAnd (PGreater 10 (PSelf))
+                               (PGreater (PSelf) 2))))))
+   
 ; IntValue IntValue -> Set(IntValue)
 (define (int/- l r)
   (match* (l r)
@@ -70,6 +234,10 @@
     
 (define (swap/pand p)
   (match p [(PAnd l r) (PAnd r l)]))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+#|
 
 (define (norm/por p)
   (match p
@@ -349,32 +517,4 @@
   
   (check-equal? (pred+ (PNot 3) (PNot 5)) #t))
 
-
-#;
-(define (norm/pand p)
-  (match p
-    [(PAnd (? number? l-num) (PGreater (PSelf) (? number? r-num)))
-     (check-true (>= l-num r-num))
-     l-num]
-    [(PAnd (? number? l-num) (PGreater (? number? r-num) (PSelf)))
-     (check-true (<= l-num r-num))
-     l-num]
-    [(PAnd (PGreater _ _) (? number?)) (norm/pand (swap/pand p))]
-    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (PSelf) (max l-num r-num))]
-    [(PAnd (PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (min l-num r-num) (PSelf))]
-    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     (check-true (<= l-num r-num))
-     (if (= l-num r-num) l-num p)]
-    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
-     (norm/pand (swap/pand p))]
-    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
-                 (PGreater (? number? r1) (PSelf)))
-           (PAnd (PGreater (PSelf) (? number? l2))
-                 (PGreater (? number? r2) (PSelf))))
-     (norm/pand (PAnd (PGreater (PSelf) (max l1 l2))
-                      (PGreater (min r1 r2) (PSelf))))]
-    [(PAnd (? PAnd? l) (? PAnd? r))
-     (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
-    [p p]))
+|#
