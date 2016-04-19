@@ -340,5 +340,6 @@
                              {let {{another_add1 {apply add1}}}
                                {let {{another_add2 {apply add2}}}
                                  {let {{two {another_add1 1}}}
-                                   {another_add2 1}}}}}}}))
+                                   {let {{three {another_add1 two}}}
+                                     {another_add2 1}}}}}}}}))
 (aval-infer add1-h)
