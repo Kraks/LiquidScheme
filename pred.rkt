@@ -111,53 +111,52 @@
 (define (pred/- p1 p2)
   (match* (p1 p2)
     [((? number?) (? number?)) (- p1 p2)]
-    [((? number? l) (PGreater (PSelf) (? number? r)))
-     (PGreater (- l r) (PSelf))]
-    [((? number? l) (PGreater (? number? r) (PSelf)))
-     (PGreater (PSelf) (- l r))]
-    [((? number? n) (PAnd (PGreater (PSelf) (? number? l))
-                          (PGreater (? number? u) (PSelf))))
-     (PAnd (PGreater (PSelf) (- n u))
-           (PGreater (- l l) (PSelf)))]
+    [((? number?) (PGreater (PSelf) (? number? l)))
+     (PGreater (- p1 l) (PSelf))]
+    [((? number?) (PGreater (? number? u) (PSelf)))
+     (PGreater (PSelf) (- p1 u))]
+    [((? number?) (PAnd (PGreater (PSelf) (? number? l))
+                        (PGreater (? number? u) (PSelf))))
+     (PAnd (PGreater (PSelf) (- p1 u))
+           (PGreater (- p1 l) (PSelf)))]
     ;;=========
-    [((PGreater (PSelf) (? number? l)) (? number? r))
-     (PGreater (PSelf) (- l r) )]    
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
+    [((PGreater (PSelf) (? number? l)) (? number?))
+     (PGreater (PSelf) (- l p2))]    
+    [((PGreater (PSelf) (? number?)) (PGreater (PSelf) (? number?)))
      #t]
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (PSelf) (- l-num r-num))]
-    [((PGreater (PSelf) (? number? l-num)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PAnd (PGreater (PSelf) (- l-num r2))
-           (PGreater (- l-num r1) (PSelf)))] ;;;;;;;;???
+    [((PGreater (PSelf) (? number? l)) (PGreater (? number? u) (PSelf)))
+     (PGreater (PSelf) (- l u))]
+    [((PGreater (PSelf) (? number? l)) (PAnd (PGreater (PSelf) (? number?))
+                                             (PGreater (? number? u) (PSelf))))
+     (PGreater (PSelf) (- l u))]
     ;;=========
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (- l-num r-num) (PSelf))]
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
+    [((PGreater (? number? u) (PSelf)) (PGreater (PSelf) (? number? l)))
+     (PGreater (- u l) (PSelf))] 
+    [((PGreater (? number?) (PSelf)) (PGreater (? number?) (PSelf)))
      #t]
-    [((PGreater (? number? l-num) (PSelf)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PGreater (- l-num r1) (PSelf))]
+    [((PGreater (? number? u) (PSelf)) (PAnd (PGreater (PSelf) (? number? l))
+                                             (PGreater (? number?) (PSelf))))
+     (PGreater (- u l) (PSelf))]
     ;;=========   
     [((PAnd (PGreater (PSelf) (? number? l1))
             (PGreater (? number? u1) (PSelf)))
       (PAnd (PGreater (PSelf) (? number? l2))
             (PGreater (? number? u2) (PSelf))))
      (PAnd (PGreater (PSelf) (- l1 u2))
-           (PGreater (- u1 l2) (PSelf)))]
+           (PGreater (- u1 l2) (PSelf)))]    
     [((PAnd (PGreater (PSelf) (? number? l))
             (PGreater (? number? u) (PSelf)))
-      (? number? n))
-     (PAnd (PGreater (PSelf) (- l n))
-           (PGreater (- u n) (PSelf)))]
-    [((PAnd (PGreater (PSelf) (? number? l))
+      (? number?))
+     (PAnd (PGreater (PSelf) (- l p2))
+           (PGreater (- u p2) (PSelf)))]    
+    [((PAnd (PGreater (PSelf) (? number?))
             (PGreater (? number? u) (PSelf)))
-      (PGreater (PSelf) (? number? r-num)))
-     (PGreater (- u r-num) (PSelf))]
+      (PGreater (PSelf) (? number? l)))
+     (PGreater (- u l) (PSelf))]  
     [((PAnd (PGreater (PSelf) (? number? l))
-            (PGreater (? number? u) (PSelf)))
-      (PGreater (? number? l-num) (PSelf)))
-     (PGreater (- l-num l) (PSelf))]))
+            (PGreater (? number?) (PSelf)))
+      (PGreater (? number? u) (PSelf)))
+     (PGreater (PSelf) (- l u))]))
 
 
 (define (pred/* p1 p2)
