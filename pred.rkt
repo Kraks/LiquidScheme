@@ -171,45 +171,68 @@
          (PGreater (* p1 l) (PSelf)))]
     [((? number?) (PGreater (? number? u) (PSelf)))
      (if (positive? p1)
-         (PGreater (* p1 u) (PSelf)
-                   (PGreater (PSelf) (* p1 u))))]
+         (PGreater (* p1 u) (PSelf))
+         (PGreater (PSelf) (* p1 u)))]
     [((? number? num) (PAnd (PGreater (PSelf) (? number? l))
                             (PGreater (? number? u) (PSelf))))
-     (if (positive? num)
-         (PAnd (PGreater (PSelf) (* num l))
-               (PGreater (* num u) (PSelf)))
-         (PAnd (PGreater (PSelf) (* num u))
-               (PGreater (* num l) (PSelf))))]
+     (let* ([candidates (list (* num l) (* num u))]
+            [upper (max candidates)]
+            [lower (min candidates)])
+       (PAnd (PGreater (PSelf) lower)
+             (PGreater upper (PSelf))))]
     ;;=========
     [((? PGreater? l) (? number? r))
-     (pred/+ r l)]    
-    [((PGreater (PSelf) (? number? u1)) (PGreater (PSelf) (? number? u2)))
-     (PGreater (PSelf) (* u1 u2))]
-    [((PGreater (PSelf) (? number?)) (PGreater (? number?) (PSelf)))
-     #t]
-    [((PGreater (PSelf) (? number? l-num)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PAnd (PGreater (PSelf) (+ l-num r1))
-           (PGreater (+ l-num r2) (PSelf)))]
+     (pred/* r l)]   
+    [((PGreater (PSelf) (? number? l1)) (PGreater (PSelf) (? number? l2)))
+     (PGreater (PSelf) (* l1 l2))]
+    [((PGreater (PSelf) (? number? l)) (PGreater (? number? u) (PSelf)))
+     (let* ([candidates (list (* l u) (* l -inf.f) (* +inf.f u))]
+            [upper (max candidates)])
+       (if (infinite? upper)
+           #t
+           (PGreater upper (PSelf))))]    
+    [((PGreater (PSelf) (? number? l1)) (PAnd (PGreater (PSelf) (? number? l2))
+                                              (PGreater (? number? u) (PSelf))))
+     (let* ([candidates (list (* l1 l2) (* l1 u) (* +inf.f l2) (* +inf.f u))]
+            [lower (min candidates)]
+            [upper (max candidates)])
+       (match* (lower upper)
+         [(-inf.f +inf.f) #t]
+         [(-inf.f _) (PGreater upper (PSelf))]
+         [(_ +inf.f) (PGreater (PSelf) lower)]
+         [(_ _) (PAnd (PGreater (PSelf) lower)
+                      (PGreater upper (PSelf)))]))]
     ;;=========
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (PSelf) (? number? r-num)))
-     (pred/+ r-num l-num)]
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (+ l-num r-num) (PSelf))]
-    [((PGreater (? number? l-num) (PSelf)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PGreater (+ l-num r2) (PSelf))]
+    [((PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
+     (pred/+ p2 p1)]    
+    [((PGreater (? number? u1) (PSelf)) (PGreater (? number? u2) (PSelf)))
+     (let* ([candidates (list (* u1 u2) (* u1 -inf.f) (* u2 -inf.f))]
+            [lower (min candidates)])
+       (if (infinite? lower)
+           #t
+           (PGreater (PSelf) lower)))]    
+    [((PGreater (? number? u1) (PSelf)) (PAnd (PGreater (PSelf) (? number? l))
+                                              (PGreater (? number? u2) (PSelf))))
+     (let* ([candidates (list (* u1 l) (* u1 u2) (* -inf.f l) (* -inf.f u2))]
+            [lower (min candidates)]
+            [upper (max candidates)])
+       (match* (lower upper)
+         [(-inf.f +inf.f) #t]
+         [(-inf.f _) (PGreater upper (PSelf))]
+         [(_ +inf.f) (PGreater (PSelf) lower)]
+         [(_ _) (PAnd (PGreater (PSelf) lower)
+                      (PGreater upper (PSelf)))]))]
     ;;=========   
     [((PAnd (PGreater (PSelf) (? number? l1))
             (PGreater (? number? u1) (PSelf)))
       (PAnd (PGreater (PSelf) (? number? l2))
             (PGreater (? number? u2) (PSelf))))
-     (PAnd (PGreater (PSelf) (+ l1 l2))
-           (PGreater (+ u1 u2) (PSelf)))]
+     (let* ([candidates (list (* l1 l2) (* l1 u2) (* u1 l2) (* u1 u2))]
+            [upper (max candidates)]
+            [lower (min candidates)])
+       (PAnd (PGreater (PSelf) lower)
+             (PGreater upper (PSelf))))]
     [((? PAnd?) _) (pred/+ p2 p1)]))
-
-
-
 
 
 ; IntValue -> Set(IntValue)
