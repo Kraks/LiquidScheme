@@ -15,6 +15,49 @@
 ; TODO inline/expand
 ; !!!! TODO int/+ int/- int/* bool/and bool/or
 
+; is p1 a subset of p2?
+; Predicate Predicate -> Predicate
+(define (is-sub-pred? p1 p2)
+  (match (p1 p2)
+    [((? number? n) (? number? m))
+     (= n m)]
+    [((? number? n) (PGreater (PSelf) (? number? m)))
+     (> n m)]
+    [((? number? n) (PGreater (? number? m) (PSelf)))
+     (< n m)]
+    [((? number? n) (PAnd (PGreater (PSelf) (? number? l))
+                          (PGreater (? number? u) (PSelf))))
+     (and (>= n l) (<= n u))]
+    ;;;;;;;;;;;;;;
+    [((PGreater (PSelf) (? number? m)) (? number? n))
+     #f]
+    [((PGreater (PSelf) (? number? m)) (PGreater (PSelf) (? number? n)))
+     (>= m n)]
+    [((PGreater (PSelf) (? number? m)) (PGreater (? number? n) (PSelf)))
+     #f]
+    [((PGreater (PSelf) (? number? m)) (PAnd _ _))
+     #f]
+    ;;;;;;;;;;;;;;
+    [((PGreater (? number? m) (PSelf)) (? number? n))
+     #f]
+    [((PGreater (? number? m) (PSelf)) (PGreater (PSelf) (? number? n)))
+     #f]
+    [((PGreater (? number? m) (PSelf)) (PGreater (? number? n) (PSelf)))
+     (<= m n)]
+    [((PGreater (? number? m) (PSelf)) (PAnd _ _))
+     #f]
+    ;;;;;;;;;;;;;;
+    [((PAnd _ _) (? number? n))
+     #f]
+    [((PAnd _ _) (PGreater _ _))
+     #f]
+    [((PAnd (PGreater (PSelf) (? number? l1)) (PGreater (? number? u1) (PSelf)))
+      (PAnd (PGreater (PSelf) (? number? l2)) (PGreater (? number? u2) (PSelf))))
+     (and (>= l1 l2) (>= u2 u1)
+          (>= l1 u2) (>= u1 l2))]
+    [else (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
+    
+
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
 
 ; IntValue IntValue -> Set(IntValue)
