@@ -22,7 +22,9 @@ abs:
 
 (provide aval
          aval-infer
-         call2type)
+         call2type
+         verify-contract
+         verify-runtime)
 
 #|
  lam ::= (λ (var) exp)
@@ -280,7 +282,11 @@ abs:
                   (string-append "("
                                  (string-join (map value->string (set->list (TArrow-arg type))))
                                  ")"))
-              (value->string (TArrow-ret type)))))
+              (if (= 1 (set-count (TArrow-ret type)))
+                  (value->string (set-first (TArrow-ret type)))
+                  (string-append "("
+                                 (string-join (map value->string (set->list (TArrow-ret type))))
+                                 ")")))))
   (hash-copy call2type))
 
 ;;;;;;;;;;;;;;;;
@@ -350,8 +356,6 @@ abs:
                           two}}}))
 ;(aval-infer abs)
 
-;(define (verify call2type annotations)
-
 (define (replace-self-with-name pred var)
   (match pred
     [(PSelf) (PVar var)]
@@ -402,6 +406,45 @@ abs:
                                    (PAnd (PGreater (PVar 'x) 6) (PGreater 9 (PVar 'x)))) 'x)
                 '(or ((and (> x 3) (> 5 x)) (and (> x 6) (> 9 x))))))
 
-; Expr ArrowType -> Boolean
-(define (verify-contract func arrow-type)
-  (aval-infer (App (parsing func) (arrow-type arg)))
+(define (transform v)
+  (match v
+    [(IntValue p) (Int p)]
+    [(BoolValue p) (Bool p)]))
+
+; Expr Hash -> Void
+(define (verify-contract func contracts)
+  (define func-name (Lam-label func))
+  (define arrow-types (set->list (hash-ref contracts func-name)))
+  (for/list ([arrow-type arrow-types])
+    (for/list ([arg (TArrow-arg arrow-type)])
+      (define call2type (aval-infer (App func (transform arg))))
+      (define run-time-return (set-first (TArrow-ret (set-first (hash-ref call2type func-name)))))
+      (when (not (is-sub-type? run-time-return (set-first (TArrow-ret arrow-type))))
+        (printf "Error: contract violate\n"))))
+  'Done)
+
+; TArrow Set(TArrow) -> Boolean
+(define (check-contract instance contracts)
+  (define arg (set-first (TArrow-arg instance)))
+  (define ret (set-first (TArrow-ret instance)))
+  ;(printf "~a ~a\n" arg ret)
+  (define arg-valid?
+    (ormap (λ (x) x) (flatten (for/list ([contract contracts])
+                                (for/list ([carg (set->list (TArrow-arg contract))])
+                                  (is-sub-type? arg carg))))))
+  (define ret-valid?
+    (ormap (λ (x) x) (flatten (for/list ([contract contracts])
+                                (for/list ([cret (set->list (TArrow-arg contract))])
+                                  (is-sub-type? ret cret))))))
+  ;(printf "~a ~a\n" arg-valid? ret-valid?)
+  (when (or (not arg-valid?)
+            (not ret-valid?))
+    (printf "Error: contract violate\n")))
+
+; Expr Hash ->
+(define (verify-runtime expr contracts)
+  (define call2type (aval-infer expr))
+  (for ([(label arrows) (in-hash call2type)])
+    (when (hash-has-key? contracts label)
+      (for ([arrow arrows])
+        (check-contract arrow (hash-ref contracts label))))))

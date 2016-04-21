@@ -12,10 +12,22 @@
          bool/or
          bool/not
          all-bools
-         pred-preprocess)
+         pred-preprocess
+         is-sub-type? is-sub-pred?)
 
 ; TODO inline/expand
 ; !!!! TODO int/+ int/- int/* bool/and bool/or
+
+(define (is-sub-type? t1 t2)
+  (match* (t1 t2)
+    [((IntValue _) (IntValue #t)) #t]
+    [((IntValue #t) (IntValue _)) #f]
+    [((IntValue p1) (IntValue p2))
+     (is-sub-pred? p1 p2)]
+    [((BoolValue _) (BoolValue #t)) #t]
+    [((BoolValue (True)) (BoolValue (True))) #t]
+    [((BoolValue (False)) (BoolValue (False))) #t]
+    [(_ _) #f]))
 
 ; is p1 a subset of p2?
 ; Predicate Predicate -> Predicate
@@ -452,7 +464,7 @@
 ;; ###33###
 (define pred-preprocess
   (compose list->set
-           (curry map IntValue) 
+           (curry map IntValue)
            (curry map (compose reduce IntValue-pred))
            (curry filter is-valid-pred?)
            (curry map reorder-pand)
