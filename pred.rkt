@@ -65,6 +65,8 @@
 ; pred/+ :: Predicate Predicate -> Predicate
 (define (pred/+ p1 p2)
   (match* (p1 p2)
+    [(#t _) #t]
+    [(_ #t) #t]
     [((? number?) (? number?)) (+ p1 p2)]
     [((? number? l) (PGreater (PSelf) (? number? r)))
      (PGreater (PSelf) (+ l r))]
@@ -106,6 +108,8 @@
 ; pred/- :: Predicate Predicate -> Predicate
 (define (pred/- p1 p2)
   (match* (p1 p2)
+    [(#t _) #t]
+    [(_ #t) #t]
     [((? number?) (? number?)) (- p1 p2)]
     [((? number?) (PGreater (PSelf) (? number? l)))
      (PGreater (- p1 l) (PSelf))]
@@ -159,6 +163,8 @@
 
 (define (pred/* p1 p2)
   (match* (p1 p2)
+    [(#t _) #t]
+    [(_ #t) #t]
     [((? zero?) _) 0]
     [(_ (? zero?)) 0]
     [((? number?) (? number?)) (* p1 p2)]
@@ -462,13 +468,13 @@
 ; IntValue IntValue -> Set(IntValue)
 (define (int/- l r)
   (match* (l r)
-    [((IntValue p1) (IntValue p2)) (Set (IntValue (pred/- p1 p2)))]
+    [((IntValue p1) (IntValue p2)) (set (IntValue (pred/- p1 p2)))]
     [(_ _) (error 'int/- "not an integer")]))
 
 ; IntValue IntValue -> Set(IntValue)
 (define (int/* l r)
   (match* (l r)
-    [((IntValue p1) (IntValue p2)) (Set (IntValue (pred/* p1 p2)))]
+    [((IntValue p1) (IntValue p2)) (set (IntValue (pred/* p1 p2)))]
     [(_ _) (error 'int/* "not an integer")]))
 
 ; BoolValue BoolValue -> Set(BoolValue)
@@ -499,6 +505,8 @@
 ; IntValue IntValue -> Set(BoolValue)
 (define (int/eq l r)
   (match* (l r)
+    [(#t _) all-bools]
+    [(_ #t) all-bools]
     [((IntValue (? number? l-num)) (IntValue (? number? r-num)))
      (set (if (= l-num r-num)
               (BoolValue (True))
@@ -572,8 +580,10 @@
 ; IntValue IntValue -> Set(BoolValue)
 (define (int/> v1 v2)
   (match* (v1 v2)
+    [(#t _) all-bools]
+    [(_ #t) all-bools]
     [((IntValue (? number? ln)) (IntValue (? number? rn)))
-     (set (if (= ln rn)
+     (set (if (> ln rn)
               (BoolValue (True))
               (BoolValue (False))))]
     [((IntValue (? number? num))

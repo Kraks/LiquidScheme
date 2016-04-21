@@ -292,7 +292,9 @@
       (printf "    ~a -> ~a\n"
               (if (= 1 (set-count (TArrow-arg type)))
                   (value->string (set-first (TArrow-arg type)))
-                  (string-append "(" (string-join (map value->string (set->list (TArrow-arg type)))) ")"))
+                  (string-append "("
+                                 (string-join (map value->string (set->list (TArrow-arg type))))
+                                 ")"))
               (value->string (TArrow-ret type)))))
   "Done")
 
@@ -353,7 +355,7 @@
                                  {let {{two {another_add1 1}}}
                                    {let {{three {another_add1 two}}}
                                      {another_add2 1}}}}}}}}))
-(aval-infer add1-h)
+;(aval-infer add1-h)
 
 
 (define abs (parse '{let {{abs {lambda abs {x} {if {> x 0}
@@ -362,3 +364,4 @@
                       {let {{one {abs 1}}}
                         {let {{two {abs {- 0 2}}}}
                           two}}}))
+(aval-infer abs)

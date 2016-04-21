@@ -103,6 +103,7 @@
 
 ;; TESTS
 (module+ test
+  #|
   (define h (define-types->hash
               '((: a (-> Int Int))
                 (: b (-> Int Int))
@@ -115,5 +116,10 @@
                       'b
                       (TArrow (TInt #t) (TInt #t)))
                 h)
+|#
+  (define h (define-types->hash
+              '((: abs (-> (Int (> _ 1)) (Int (> _ 1)))))))
 
+  h
+  
   )
