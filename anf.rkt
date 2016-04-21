@@ -420,11 +420,11 @@ abs:
       (define call2type (aval-infer (App func (transform arg))))
       (define run-time-return (set-first (TArrow-ret (set-first (hash-ref call2type func-name)))))
       (when (not (is-sub-type? run-time-return (set-first (TArrow-ret arrow-type))))
-        (printf "Error: contract violate\n"))))
-  'Done)
+        (printf "Error: contract violated: ~a\n" func-name))))
+  (void))
 
 ; TArrow Set(TArrow) -> Boolean
-(define (check-contract instance contracts)
+(define (check-contract instance contracts func-name)
   (define arg (set-first (TArrow-arg instance)))
   (define ret (set-first (TArrow-ret instance)))
   ;(printf "~a ~a\n" arg ret)
@@ -439,7 +439,7 @@ abs:
   ;(printf "~a ~a\n" arg-valid? ret-valid?)
   (when (or (not arg-valid?)
             (not ret-valid?))
-    (printf "Error: contract violate\n")))
+    (printf "Error: contract violate: ~a\n" func-name)))
 
 ; Expr Hash ->
 (define (verify-runtime expr contracts)
@@ -447,4 +447,4 @@ abs:
   (for ([(label arrows) (in-hash call2type)])
     (when (hash-has-key? contracts label)
       (for ([arrow arrows])
-        (check-contract arrow (hash-ref contracts label))))))
+        (check-contract arrow (hash-ref contracts label) label)))))
