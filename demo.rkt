@@ -18,7 +18,7 @@
 ; id: int -> int
 (define contract2 (define-types->hash '((: id (-> Int Int)))))
 
-; id cloud has intersection type (int -> int) & (bool -> bool)
+; id could has an intersection type (int -> int) & (bool -> bool)
 (define contract2-bool (define-types->hash '((: id (-> Int Int))
                                              (: id (-> Bool Bool)))))
 
