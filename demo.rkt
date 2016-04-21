@@ -1,6 +1,5 @@
 #lang racket
 
-
 (require "anf.rkt")
 (require "structs.rkt")
 (require "parsers.rkt")
@@ -8,8 +7,10 @@
 ; Example 1
 ; id should be (Int -> Int), but user provide (Int -> Bool)
 (define wrong-contract (define-types->hash '((: id (-> Int Bool)))))
+
 (define id (parse '{lambda id {x} x}))
-(verify-contract id wrong-contract)
+
+(verify-contract id wrong-contract) ;reject
 
 ;============================================
 
@@ -26,8 +27,8 @@
                              {let {{fls {id false}}}
                                one}}}))
 
-;(verify-runtime example2 contract2)
-;(verify-runtime example2 contract2-bool)
+(verify-runtime example2 contract2)       ; reject
+(verify-runtime example2 contract2-bool)  ; accept
 
 ;============================================
 
@@ -47,4 +48,6 @@
                                    {let {{two {another_add1 1}}}
                                      {let {{three {another_add1 two}}}
                                        {another_add2 2}}}}}}}}))
-;(verify-runtime example3 contract3)
+
+; reject becuase {another_add2 2} does not satisfy precondition of add2
+(verify-runtime example3 contract3)
