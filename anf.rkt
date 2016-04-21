@@ -44,40 +44,6 @@ abs:
  prim ::= +  |  -  |  *  |  = | and | or | not
 |#
 
-(struct Let (var val body) #:transparent)
-(struct Letrec (var val body) #:transparent)
-(struct LetK (var body env addr) #:transparent)
-(struct EndK (label arg addr) #:transparent)
-
-(struct Greater (l s) #:transparent)
-
-(struct State (exp env kont time) #:transparent)
-
-(define (parse exp)
-  (match exp
-    ['true (Bool (True))]
-    ['false (Bool (False))]
-    ['(void) (Void)]
-    [(? integer? n) (Int n)]
-    [(? symbol?) (Var exp)]
-    [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
-    [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
-    [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
-    [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
-    ;;;
-    [`(> ,lhs ,rhs) (Greater (parse lhs) (parse rhs))]
-    [`(< ,lhs ,rhs) (parse `(> ,rhs ,lhs))]
-    ;;;
-    [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
-    [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
-    [`(not ,bl) (Not (parse bl))]
-    [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
-    [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
-    [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
-    [`(let ((,lhs ,rhs)) ,body) (Let lhs (parse rhs) (parse body))]
-    [`(letrec ((,lhs ,rhs)) ,body) (Letrec lhs (parse rhs) (parse body))]
-    [`(,rator ,rand) (App (parse rator) (parse rand))]))
-
 ; label -> set(ArrowType)
 (define call2type (make-hash))
 
@@ -241,9 +207,9 @@ abs:
             (State body new-env new-k time*)]
            [else (error 'state "not a closure: ~a" fun-v)]))]
 
-      [(State (? valid-value? e) env (EndK label arg-v next-k) t)
+      [(State (? valid-value? e) env (EndK label arg-vs next-k) t)
        (hash-update! call2type label
-                     (λ (d) (set-union d (set (TArrow arg-v e))))
+                     (λ (d) (set-union d (set (TArrow arg-vs (set e)))))
                      (set))
        (list (State e env next-k t))]
       
@@ -277,13 +243,20 @@ abs:
 ; exp -> [State]
 (define (aval e) (explore step (inject e)))
 
-; TODO
 (define (pred->string p)
   (match p
     [#t "any"]
     [(True) "true"]
     [(False) "false"]
     [(? number?) (number->string p)]
+    [(PGreater (PSelf) (? number? n)) (string-append ">" (number->string n))]
+    [(PGreater (? number? n) (PSelf)) (string-append "<" (number->string n))]
+    [(PGreater (PVar var) (? number? n))
+     (string-append (symbol->string var) ">" (number->string n))]
+    [(PGreater (? number? n) (PVar var))
+     (string-append (symbol->string var) "<" (number->string n))]
+    [(PAnd l r)
+     (string-append "(and" (pred->string l) " " (pred->string r) ")")]
     [else ""]))
 
 (define (value->string e)
@@ -296,6 +269,7 @@ abs:
 
 (define (aval-infer e)
   (hash-clear! call2type)
+  (hash-clear! store)
   (explore step (inject e))
   (for/list ([(label types) (in-hash call2type)])
     (printf "~a: \n" label)
@@ -307,7 +281,7 @@ abs:
                                  (string-join (map value->string (set->list (TArrow-arg type))))
                                  ")"))
               (value->string (TArrow-ret type)))))
-  "Done")
+  (hash-copy call2type))
 
 ;;;;;;;;;;;;;;;;
 
@@ -366,8 +340,7 @@ abs:
                                  {let {{two {another_add1 1}}}
                                    {let {{three {another_add1 two}}}
                                      {another_add2 1}}}}}}}}))
-(aval-infer add1-h)
-
+;(aval-infer add1-h)
 
 (define abs (parse '{let {{abs {lambda abs {x} {if {> x 0}
                                                    x
@@ -379,6 +352,56 @@ abs:
 
 ;(define (verify call2type annotations)
 
-#;
-(define (verify-annotation func arrow-type)
+(define (replace-self-with-name pred var)
+  (match pred
+    [(PSelf) (PVar var)]
+    [(PGreater l r)
+     (PGreater (replace-self-with-name l var) (replace-self-with-name r var))]
+    [(PAnd l r)
+     (PAnd (replace-self-with-name l var) (replace-self-with-name r var))]
+    [p p]))
+
+; Predicate symbol -> s-exp
+(define (pred->z3 pred self-name)
+  (match pred
+    [#t '()]
+    [(PVar name) name]
+    [(? number? n) `(= ,self-name ,n)]
+    [(PAnd l r) `(and ,(pred->z3 l self-name) ,(pred->z3 r self-name))]
+    [(PGreater (? number? l) r)
+     `(> ,l ,(pred->z3 r self-name))]
+    [(PGreater l (? number? r))
+     `(> ,(pred->z3 l self-name) ,r)]
+    [(PSelf) (error 'pred->z3 "should replace PSelf with first")]))
+
+; Set(Predicate) symbol -> [s-exp]
+(define (pred-set->z3 preds self-name)
+  (if (= 1 (set-count preds))
+      (pred->z3 (set-first preds) self-name)
+      `(or ,(set-map preds (λ (pred) (pred->z3 pred self-name))))))
+
+; Value symbol -> [s-exp]
+(define (value->z3 val self-name)
+  (match val
+    [(IntValue pred)
+     (append `(declare-const ,self-name Int) '())]
+    [(BoolValue pred)
+     `(declare-const ,self-name Bool)]
+    [(VoidValue) (void)]
+    [(Clo (Lam label x body) env) label]
+    [_ (error 'value->z3 "not a value")]))
+
+(module+ test
+  (check-equal? (replace-self-with-name (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))) 'x)
+                (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x))))
+  (check-equal? (pred->z3 (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x))) 'x)
+                '(and (> x 3) (> 5 x)))
+  (check-equal? (pred-set->z3 (set (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x)))) 'x)
+                '(and (> x 3) (> 5 x)))
+  (check-equal? (pred-set->z3 (set (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x)))
+                                   (PAnd (PGreater (PVar 'x) 6) (PGreater 9 (PVar 'x)))) 'x)
+                '(or ((and (> x 3) (> 5 x)) (and (> x 6) (> 9 x))))))
+
+; Expr ArrowType -> Boolean
+(define (verify-contract func arrow-type)
   (aval-infer (App (parsing func) (arrow-type arg)))

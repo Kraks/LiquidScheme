@@ -86,6 +86,32 @@
     [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
     [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
     [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
+    ;;;
+    [`(> ,lhs ,rhs) (Greater (parse lhs) (parse rhs))]
+    [`(< ,lhs ,rhs) (parse `(> ,rhs ,lhs))]
+    ;;;
+    [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
+    [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
+    [`(not ,bl) (Not (parse bl))]
+    [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
+    [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
+    [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
+    [`(let ((,lhs ,rhs)) ,body) (Let lhs (parse rhs) (parse body))]
+    [`(letrec ((,lhs ,rhs)) ,body) (Letrec lhs (parse rhs) (parse body))]
+    [`(,rator ,rand) (App (parse rator) (parse rand))]))
+
+#|
+(define (parse exp)
+  (match exp
+    ['true (Bool (True))]
+    ['false (Bool (False))]
+    ['(void) (Void)]
+    [(? integer? n) (Int n)]
+    [(? symbol?) (Var exp)]
+    [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
+    [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
+    [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
+    [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
     [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
     [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
     [`(not ,bl) (Not (parse bl))]
@@ -100,7 +126,7 @@
                (begin (set! ,lhs ,rhs)
                       ,body)))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
-
+|#
 
 ;; TODO:
 ; below:  pred-processing preds

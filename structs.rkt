@@ -2,7 +2,14 @@
 
 (provide (all-defined-out))
 
-(struct State (exp env store kont time) #:transparent)
+(struct Let (var val body) #:transparent)
+(struct Letrec (var val body) #:transparent)
+(struct LetK (var body env addr) #:transparent)
+(struct EndK (label arg addr) #:transparent)
+(struct Greater (l s) #:transparent)
+(struct State (exp env kont time) #:transparent)
+
+;(struct State (exp env store kont time) #:transparent)
 
 ; Exp
 (struct Var (name) #:transparent)
