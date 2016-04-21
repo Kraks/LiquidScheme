@@ -38,6 +38,8 @@
 (struct LetK (var body env addr) #:transparent)
 (struct EndK (label arg addr) #:transparent)
 
+(struct Greater (l s) #:transparent)
+
 (struct State (exp env kont time) #:transparent)
 
 (define (parse exp)
@@ -51,6 +53,10 @@
     [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
     [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
     [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
+    ;;;
+    [`(> ,lhs ,rhs) (Greater (parse lhs) (parse rhs))]
+    [`(< ,lhs ,rhs) (parse `(> ,rhs ,lhs))]
+    ;;;
     [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
     [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
     [`(not ,bl) (Not (parse bl))]
@@ -145,6 +151,10 @@
      (do-for-all-pairs (eval-atom l env store)
                        (eval-atom r env store)
                        int/eq)]
+    [(Greater l r)
+     (do-for-all-pairs (eval-atom l env store)
+                       (eval-atom r env store)
+                       int/>)]
     [(Not b) (bool/not b)]
     [else 'eval-prim "not a primitive operator"]))
 
@@ -168,6 +178,7 @@
     [(Or _ _) #t]
     [(Not _) #t]
     [(NumEq _ _) #t]
+    [(Greater _ _) #t]
     [else #f]))
 
 (define (atom? e)
@@ -343,3 +354,11 @@
                                    {let {{three {another_add1 two}}}
                                      {another_add2 1}}}}}}}}))
 (aval-infer add1-h)
+
+
+(define abs (parse '{let {{abs {lambda abs {x} {if {> x 0}
+                                                   x
+                                                   {- 0 x}}}}}
+                      {let {{one {abs 1}}}
+                        {let {{two {abs {- 0 2}}}}
+                          two}}}))

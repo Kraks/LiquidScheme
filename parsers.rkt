@@ -100,7 +100,8 @@
                       ,body)))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
-;; test
+
+;; TESTS
 (module+ test
   (define h (define-types->hash
               '((: a (-> Int Int))
@@ -113,4 +114,6 @@
                       (TIs (set (TArrow (TInt #t) (TInt #t)) (TArrow (TBool #t) (TBool #t))))
                       'b
                       (TArrow (TInt #t) (TInt #t)))
-                h))
+                h)
+
+  )
