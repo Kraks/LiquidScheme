@@ -59,7 +59,6 @@
           (>= l1 u2) (>= u1 l2))]
     [(_ _) (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
     
-
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
 
 ; pred/+ :: Predicate Predicate -> Predicate
