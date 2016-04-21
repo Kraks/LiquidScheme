@@ -3,6 +3,7 @@
 (require srfi/1)
 (require rackunit)
 (require "structs.rkt")
+(require "pred.rkt")
 
 (provide parse
          define-types->hash)
@@ -35,15 +36,24 @@
 (define (parse-type-def tdef)
   (define (parse-type exp)
     (match exp
-      [(? integer?) (IntValue exp)]
-      ['Int (IntValue #t)]
+      [(? integer?) (pred-preprocess (IntValue exp))]
+      ['Int (pred-preprocess (IntValue #t))]
       ['Bool (BoolValue #t)]
       ['Any (TAny)]
       ['_ (PSelf)]
       ['true (BoolValue (True))]
       ['false (BoolValue (False))]
-      [`(-> ,in-type ,out-type) (TArrow (parse-type in-type) (parse-type out-type))]
-      [`(Int ,pred) (IntValue (parse-pred pred))]
+      [`(-> ,in-type ,out-type)
+       (let* ([it (parse-type in-type)]
+              [ot (parse-type out-type)]
+              [fit (if (set? it)
+                       it
+                       (set it))]
+              [fot (if (set? ot)
+                       ot
+                       (set ot))])
+         (TArrow fit fot))]
+      [`(Int ,pred) (pred-preprocess (IntValue (parse-pred pred)))]
       [`(Bool ,pred) (BoolValue (parse-pred pred))]))
   (match tdef
     [`(: ,name ,type) (DefineType name (parse-type type))]
@@ -63,7 +73,7 @@
       ['true (True)]
       ['false (False)]
       ['_ (PSelf)]
-      [(? integer?) (PInt d-pred)]
+      [(? integer?) d-pred #;(PInt d-pred)]
       [(? symbol?) (PVar d-pred)]
       [`(+ ,lhs ,rhs) (PPlus (parse-pred lhs) (parse-pred rhs))]
       [`(- ,lhs ,rhs) (PMinus (parse-pred lhs) (parse-pred rhs))]
@@ -138,19 +148,21 @@
                 (: b (-> Int Int))
                 (: c (-> Int Int))
                 (: c (-> Bool Bool)))))
-  (check-equal? (hash 'a
-                      (set (TArrow (IntValue #t) (IntValue #t)))
+  (check-equal? h
+                (hash 'a
+                      (set (TArrow (set (IntValue #t)) (set (IntValue #t))))
                       'c
-                      (set (TArrow (IntValue #t) (IntValue #t)) (TArrow (BoolValue #t) (BoolValue #t)))
+                      (set (TArrow (set (IntValue #t)) (set (IntValue #t)))
+                           (TArrow (set (BoolValue #t)) (set (BoolValue #t))))
                       'b
-                      (set (TArrow (IntValue #t) (IntValue #t))))
-                  h))
-  #|
-  (define h (define-types->hash
-              '((: abs (-> (Int (> _ 1)) (Int (> _ 1)))))))
-
-  h
-|#  
+                      (set (TArrow (set (IntValue #t)) (set (IntValue #t))))))
+  
+  (define hh (define-types->hash
+               '((: abs (-> (Int (and 3 (or (> _ 8) (< _ 18)))) (Int (> _ 1)))))))
+  
+  (check-equal? hh
+                (hash 'abs (set (TArrow (set (IntValue 3)) (set (IntValue (PGreater (PSelf) 1)))))))
+  )
 
 
 ; hash: symbol -> Set(TArrow)

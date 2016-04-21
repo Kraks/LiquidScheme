@@ -59,6 +59,7 @@
           (>= l1 u2) (>= u1 l2))]
     [(_ _) (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
     
+
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
 
 ; pred/+ :: Predicate Predicate -> Predicate
@@ -450,7 +451,9 @@
 
 ;; ###33###
 (define pred-preprocess
-  (compose (curry map reduce)
+  (compose list->set
+           (curry map IntValue) 
+           (curry map (compose reduce IntValue-pred))
            (curry filter is-valid-pred?)
            (curry map reorder-pand)
            (curry apply set-union)
