@@ -10,7 +10,8 @@
          bool/and
          bool/or
          bool/not
-         all-bools)
+         all-bools
+         pred-preprocess)
 
 ; TODO inline/expand
 ; !!!! TODO int/+ int/- int/* bool/and bool/or
@@ -18,7 +19,7 @@
 ; is p1 a subset of p2?
 ; Predicate Predicate -> Predicate
 (define (is-sub-pred? p1 p2)
-  (match (p1 p2)
+  (match* (p1 p2)
     [((? number? n) (? number? m))
      (= n m)]
     [((? number? n) (PGreater (PSelf) (? number? m)))
@@ -55,7 +56,7 @@
       (PAnd (PGreater (PSelf) (? number? l2)) (PGreater (? number? u2) (PSelf))))
      (and (>= l1 l2) (>= u2 u1)
           (>= l1 u2) (>= u1 l2))]
-    [else (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
+    [(_ _) (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
     
 
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
@@ -230,7 +231,7 @@
     [((? PAnd?) _) (pred/+ p2 p1)]))
 
 
-; IntValue -> Set(IntValue)
+; IntValue -> [IntValue]
 (define (de/or i)
   ; Predicate -> [Predicate]
   (define (aux pred)
@@ -242,9 +243,10 @@
       [(PNot p) (map PNot (aux p))]
       [p (list p)]))
   (define preds (aux (IntValue-pred i)))
-  (list->set (map IntValue preds)))
+  #; (list->set (map IntValue preds))
+  (remove-duplicates (map IntValue preds)))
 
-; IntValue -> Set(IntValue)
+; IntValue -> [IntValue]
 (define (de/not i)
   ; Predicate -> [Predicate]
   (define (aux pred)
@@ -262,7 +264,8 @@
          (PAnd (first pair) (second pair)))]
       [p (list p)]))
   (define preds (aux (IntValue-pred i)))
-  (list->set (map IntValue preds)))
+  #; (list->set (map IntValue preds))
+  (remove-duplicates (map IntValue preds)))
 
 ; Predicate -> Predicate
 (define (reorder-pand pred)
@@ -295,6 +298,7 @@
          (and (>= u2 l1) (>= u1 l2) (>= l1 l2) (>= u1 u2)))]
     [(PAnd l r) (and (is-valid-pred? l) (is-valid-pred? r))]
     [else #t]))
+
 
 ; Predicate -> Predicate
 (define (reduce pred)
@@ -376,62 +380,77 @@
   (check-equal? (reduce (PAnd (PAnd 4 (PGreater (PSelf) 2))
                               (PAnd (PGreater (PSelf) 0)
                                     (PGreater (PSelf) 1))))
-                4)  
-  (check-equal? (de/not (IntValue 1))
+                4)
+
+
+  
+  (check-equal? (list->set (de/not (IntValue 1)))
                 (set (IntValue 1)))
-  (check-equal? (de/not (IntValue (PNot 1)))
+  (check-equal? (list->set (de/not (IntValue (PNot 1))))
                 (set (IntValue (PGreater (PSelf) 1))
                      (IntValue (PGreater 1 (PSelf)))))
-  (check-equal? (de/not (IntValue (PNot (PGreater (PSelf) 3))))
+
+  (check-equal? (list->set (de/not (IntValue (PNot (PGreater (PSelf) 3)))))
                 (set (IntValue 3)
                      (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (de/not (IntValue (PNot (PGreater 3 (PSelf)))))
+  (check-equal? (list->set (de/not (IntValue (PNot (PGreater 3 (PSelf))))))
                 (set (IntValue (PGreater (PSelf) 3))
                      (IntValue 3)))
-  (check-equal? (de/not (IntValue (PNot (PAnd (PGreater (PSelf) 3)
-                                              (PGreater 5 (PSelf))))))
-                (set (IntValue 5)
-                     (IntValue 3)
-                     (IntValue (PGreater (PSelf) 5))
-                     (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (de/not (IntValue (PAnd (PNot 3) (PNot 5))))
+  (check-equal? (list->set (de/not (IntValue (PNot (PAnd (PGreater (PSelf) 3)
+                                                         (PGreater 5 (PSelf)))))))
+                (set
+                 (IntValue 5)
+                 (IntValue 3)
+                 (IntValue (PGreater (PSelf) 5))
+                 (IntValue (PGreater 3 (PSelf)))))
+  (check-equal? (list->set (de/not (IntValue (PAnd (PNot 3) (PNot 5)))))
                 (set
                  (IntValue (PAnd (PGreater (PSelf) 3) (PGreater (PSelf) 5)))
                  (IntValue (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
                  (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater (PSelf) 5)))
                  (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater 5 (PSelf))))))
-  
-  (check-equal? (de/or (IntValue 1))
+ 
+  (check-equal? (list->set (de/or (IntValue 1)))
                 (set (IntValue 1)))
-  (check-equal? (de/or (IntValue (POr 1 2)))
+  (check-equal? (list->set (de/or (IntValue (POr 1 2))))
                 (set (IntValue 2) (IntValue 1)))
-  (check-equal? (de/or (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf)))))
+  (check-equal? (list->set (de/or (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf))))))
                 (set (IntValue (PAnd (PGreater (PSelf) 1)(PGreater 2 (PSelf))))))
-  (check-equal? (de/or (IntValue (PNot 2)))
+  (check-equal? (list->set (de/or (IntValue (PNot 2))))
                 (set (IntValue (PNot 2))))
-  (check-equal? (de/or (IntValue (PGreater (PSelf) 2)))
+  (check-equal? (list->set (de/or (IntValue (PGreater (PSelf) 2))))
                 (set (IntValue (PGreater (PSelf) 2))))
-  (check-equal? (de/or (IntValue (PGreater 3 (PSelf))))
+  (check-equal? (list->set (de/or (IntValue (PGreater 3 (PSelf)))))
                 (set (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (de/or (IntValue (PAnd (POr (PGreater (PSelf) 5)
-                                            (PGreater 0 (PSelf)))
-                                       (POr 1 6))))
+  (check-equal? (list->set (de/or (IntValue (PAnd (POr (PGreater (PSelf) 5)
+                                                       (PGreater 0 (PSelf)))
+                                                  (POr 1 6)))))
                 (set
                  (IntValue (PAnd (PGreater (PSelf) 5) 1))
                  (IntValue (PAnd (PGreater 0 (PSelf)) 6))
                  (IntValue (PAnd (PGreater 0 (PSelf)) 1))
                  (IntValue (PAnd (PGreater (PSelf) 5) 6))))
-  (check-equal? (de/or (IntValue (POr (PNot 3) (PNot 4))))
+  (check-equal? (list->set (de/or (IntValue (POr (PNot 3) (PNot 4)))))
                 (set (IntValue (PNot 3)) (IntValue (PNot 4))))
-  (check-equal? (de/or (IntValue (PAnd (POr 3 (PGreater (PSelf) 5))
-                                       (PAnd (PGreater 10 (PSelf))
-                                             (PGreater (PSelf) 2)))))
+  (check-equal? (list->set (de/or (IntValue (PAnd (POr 3 (PGreater (PSelf) 5))
+                                                  (PAnd (PGreater 10 (PSelf))
+                                                        (PGreater (PSelf) 2))))))
                 (set
                  (IntValue (PAnd (PGreater (PSelf) 5)
                                  (PAnd (PGreater 10 (PSelf)) (PGreater (PSelf) 2))))
                  (IntValue (PAnd 3
                                  (PAnd (PGreater 10 (PSelf))
                                        (PGreater (PSelf) 2)))))))
+
+;; ###33###
+(define pred-preprocess
+  (compose (curry map reduce)
+           (curry filter is-valid-pred?)
+           (curry map reorder-pand)
+           (curry apply set-union)
+           (curry map de/not)
+           de/or))
+
 
 ; IntValue IntValue -> Set(IntValue)
 (define (int/+ l r)

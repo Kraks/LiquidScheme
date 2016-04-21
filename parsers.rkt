@@ -54,7 +54,6 @@
     [`(<= ,e1 ,e2) (desugar-pred `(or (> ,e2 ,e1) (= ,e2 e1)))]
     [`(!= ,e1 ,e2) `(not (= ,e1 ,e2))]
     [`(< ,e1 ,e2)  `(>  ,e2 ,e1)]
-    [`(or ,e1 ,e2) `(not (and (not ,e1) (not ,e2)))]
     [e e]))
 
 (define (parse-pred pred)
@@ -62,6 +61,7 @@
     (match d-pred
       ['true (True)]
       ['false (False)]
+      ['_ (PSelf)]
       [(? integer?) (PInt d-pred)]
       [(? symbol?) (PVar d-pred)]
       [`(+ ,lhs ,rhs) (PPlus (parse-pred lhs) (parse-pred rhs))]
@@ -69,7 +69,7 @@
       [`(* ,lhs ,rhs) (PMult (parse-pred lhs) (parse-pred rhs))]
       [`(= ,lhs ,rhs) (PNumEq (parse-pred lhs) (parse-pred rhs))] ;; var to the left of =
       [`(and ,lhs ,rhs) (PAnd (parse-pred lhs) (parse-pred rhs))]
-      ;[`(or ,lhs ,rhs) (POr (parse-pred lhs) (parse-pred rhs))]
+      [`(or ,lhs ,rhs) (POr (parse-pred lhs) (parse-pred rhs))]
       [`(not ,bl) (PNot (parse-pred bl))]
       [`(> ,lhs ,rhs) (PGreater (parse-pred lhs) (parse-pred rhs))]
       [_ (error 'parse-pred "unknown predicate ~a" pred)])))
