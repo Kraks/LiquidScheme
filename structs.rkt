@@ -24,8 +24,8 @@
 
 ; Type
 (struct DefineType (name type) #:transparent)
-(struct TInt (pred) #:transparent)
-(struct TBool (pred) #:transparent)
+; (struct TInt (pred) #:transparent)
+; (struct TBool (pred) #:transparent)
 (struct TAny () #:transparent)
 (struct TUnit () #:transparent)
 (struct TArrow (arg ret) #:transparent)

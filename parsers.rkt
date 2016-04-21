@@ -28,22 +28,23 @@
             (let* ([val (hash-ref h k)]
                    [len (length (set->list val))])
               (values k (if (= len 1)
-                            (set-first val)
-                            (TIs val))))))
+                            (set (set-first val))
+                            ;(TIs val)
+                            val)))))
 
 (define (parse-type-def tdef)
   (define (parse-type exp)
     (match exp
-      [(? integer?) (TInt exp)]
-      ['Int (TInt #t)]
-      ['Bool (TBool #t)]
+      [(? integer?) (IntValue exp)]
+      ['Int (IntValue #t)]
+      ['Bool (BoolValue #t)]
       ['Any (TAny)]
       ['_ (PSelf)]
-      ['true (TBool (True))]
-      ['false (TBool (False))]
+      ['true (BoolValue (True))]
+      ['false (BoolValue (False))]
       [`(-> ,in-type ,out-type) (TArrow (parse-type in-type) (parse-type out-type))]
-      [`(Int ,pred) (TInt (parse-pred pred))]
-      [`(Bool ,pred) (TBool (parse-pred pred))]))
+      [`(Int ,pred) (IntValue (parse-pred pred))]
+      [`(Bool ,pred) (BoolValue (parse-pred pred))]))
   (match tdef
     [`(: ,name ,type) (DefineType name (parse-type type))]
     [_ (error 'parse-type-def "not a type definition")]))
@@ -102,34 +103,29 @@
 
 
 ;; TODO:
-; TInt -> IntValue
 ; below:  pred-processing preds
-; replace TIS with set, ...
-;
-
 
 ;; TESTS
 (module+ test
-  #|
   (define h (define-types->hash
               '((: a (-> Int Int))
                 (: b (-> Int Int))
                 (: c (-> Int Int))
                 (: c (-> Bool Bool)))))
   (check-equal? (hash 'a
-                      (TArrow (TInt #t) (TInt #t))
+                      (set (TArrow (IntValue #t) (IntValue #t)))
                       'c
-                      (TIs (set (TArrow (TInt #t) (TInt #t)) (TArrow (TBool #t) (TBool #t))))
+                      (set (TArrow (IntValue #t) (IntValue #t)) (TArrow (BoolValue #t) (BoolValue #t)))
                       'b
-                      (TArrow (TInt #t) (TInt #t)))
-                h)
-|#
+                      (set (TArrow (IntValue #t) (IntValue #t))))
+                  h))
+  #|
   (define h (define-types->hash
               '((: abs (-> (Int (> _ 1)) (Int (> _ 1)))))))
 
   h
-  
-  )
+|#  
+
 
 ; hash: symbol -> Set(TArrow)
 ; TArrow Set(Value) Set(Value)
