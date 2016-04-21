@@ -101,6 +101,13 @@
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 
+;; TODO:
+; TInt -> IntValue
+; below:  pred-processing preds
+; replace TIS with set, ...
+;
+
+
 ;; TESTS
 (module+ test
   #|
@@ -123,3 +130,6 @@
   h
   
   )
+
+; hash: symbol -> Set(TArrow)
+; TArrow Set(Value) Set(Value)

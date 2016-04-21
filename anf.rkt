@@ -3,6 +3,17 @@
 ; TODO callcc
 ; TODO logic operation actually allows non-boolean values
 ; TODO do actual computation instead of using `all-bools`
+; TODO:
+#|
+abs: 
+    int[-2] -> int[2]
+    int[1] -> int[1]
+"Done"
+> call2type
+(hash 'abs (set (TArrow (set (IntValue -2)) (IntValue 2)) (TArrow (set (IntValue 1)) (IntValue 1))))
+|#
+; TODO: if
+; TODO: z3
 
 (require rackunit)
 (require "pred.rkt")
@@ -322,7 +333,7 @@
                           {+ one two}}}}))
 
 (define toten (parse '{letrec {{toten {λ toten {n}
-                                        {let {{tst {= n 2}}}
+                                        {let {{tst {= n 10}}}
                                           {if tst
                                               false
                                               {toten {+ n 1}}}}}}}
@@ -355,7 +366,7 @@
                                  {let {{two {another_add1 1}}}
                                    {let {{three {another_add1 two}}}
                                      {another_add2 1}}}}}}}}))
-;(aval-infer add1-h)
+(aval-infer add1-h)
 
 
 (define abs (parse '{let {{abs {lambda abs {x} {if {> x 0}
@@ -364,4 +375,10 @@
                       {let {{one {abs 1}}}
                         {let {{two {abs {- 0 2}}}}
                           two}}}))
-(aval-infer abs)
+;(aval-infer abs)
+
+;(define (verify call2type annotations)
+
+#;
+(define (verify-annotation func arrow-type)
+  (aval-infer (App (parsing func) (arrow-type arg)))
