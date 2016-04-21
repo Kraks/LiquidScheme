@@ -18,7 +18,7 @@
 ; is p1 a subset of p2?
 ; Predicate Predicate -> Predicate
 (define (is-sub-pred? p1 p2)
-  (match (p1 p2)
+  (match* (p1 p2)
     [((? number? n) (? number? m))
      (= n m)]
     [((? number? n) (PGreater (PSelf) (? number? m)))
@@ -56,7 +56,6 @@
      (and (>= l1 l2) (>= u2 u1)
           (>= l1 u2) (>= u1 l2))]
     [else (error 'is-sub-pred? "seems that we didn't consider this situation: ~a ~a" p1 p2)]))
-    
 
 (define all-bools (set (BoolValue (True)) (BoolValue (False))))
 
