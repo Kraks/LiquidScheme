@@ -3,7 +3,8 @@
 (require srfi/1)
 (require rackunit)
 (require "structs.rkt")
-(require "pred.rkt")
+; (require "pred.rkt")
+(require "new-pred.rkt")
 
 (provide parse
          define-types->hash)
@@ -160,7 +161,10 @@
   (define hh (define-types->hash
                '((: abs (-> (Int (and 3 (or (> _ 8) (< _ 18)))) (Int (> _ 1)))))))
   
-  (check-equal? hh (hash 'abs (set (TArrow (set (IntValue 3)) (set (IntValue (PGreater (PSelf) 1)))))))
+  (check-equal? hh (hash 'abs
+                         (set (TArrow (set (IntValue 3))
+                                      (set (IntValue (PAnd (PGreater (PSelf) 1)
+                                                           (PGreater +inf.f (PSelf)))))))))
   )
 
 

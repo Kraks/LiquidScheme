@@ -16,7 +16,8 @@ abs:
 ; TODO: z3
 
 (require rackunit)
-(require "pred.rkt")
+; (require "pred.rkt")
+(require "new-pred.rkt")
 (require "parsers.rkt")
 (require "structs.rkt")
 
@@ -404,7 +405,8 @@ abs:
                 '(and (> x 3) (> 5 x)))
   (check-equal? (pred-set->z3 (set (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x)))
                                    (PAnd (PGreater (PVar 'x) 6) (PGreater 9 (PVar 'x)))) 'x)
-                '(or ((and (> x 3) (> 5 x)) (and (> x 6) (> 9 x))))))
+                '(or ((and (> x 6) (> 9 x))
+                      (and (> x 3) (> 5 x))))))
 
 (define (transform v)
   (match v
