@@ -15,6 +15,257 @@
          pred-preprocess
          is-sub-type? is-sub-pred?)
 
+; IntValue -> [IntValue]
+(define (de/or i)
+  ; Predicate -> [Predicate]
+  (define (aux pred)
+    (match pred
+      [(POr p1 p2) (flatten (list (aux p1) (aux p2)))]
+      [(PAnd p1 p2)
+       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
+         (PAnd (first pair) (second pair)))]
+      [(PNot p) (map PNot (aux p))]
+      [p (list p)]))
+  (define preds (aux (IntValue-pred i)))
+  (remove-duplicates (map IntValue preds)))
+
+; IntValue -> [IntValue]
+(define (de/not i)
+  ; Predicate -> Predicate
+  (define (norm/pgreater p)
+    (match p
+      [(PGreater (PSelf) _)
+       (PAnd p
+             (PGreater +inf.f (PSelf)))]
+      [(PGreater _ (PSelf))
+       (PAnd (PGreater (PSelf) -inf.f)
+             p)]
+      [p p]))
+  ; Predicate -> [Predicate]
+  (define (aux pred)
+    (match pred
+      [(PNot (? number? m))
+       (list (PGreater (PSelf) m) (PGreater m (PSelf)))]
+      [(PNot (PGreater (PSelf) m))
+       (list m (PGreater m (PSelf)))]
+      [(PNot (PGreater m (PSelf)))
+       (list m (PGreater (PSelf) m))]
+      [(PNot (PAnd p1 p2))
+       (append (aux (PNot p1)) (aux (PNot p2)))]
+      [(PAnd p1 p2)
+       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
+                 (PAnd (first pair) (second pair)))]
+      [p (list p)]))
+  (define preds (aux (IntValue-pred i)))
+  (remove-duplicates (map (compose IntValue norm/pgreater) preds)))
+
+; Predicate -> Predicate
+(define (reorder-pand pred)
+  (match pred
+    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
+     (swap/pand pred)]
+    [(PAnd l r) (PAnd (reorder-pand l) (reorder-pand r))]
+    [p p]))
+
+; Predicate -> Boolean
+(define (is-valid-pred? pred)
+  (match pred
+    [(PAnd (? number? m) (? number? n))
+     (= m n)]
+    [(PAnd (? number? m) (PGreater (PSelf) (? number? l)))
+     (> m l)]
+    [(PAnd (? number? m) (PGreater (? number? u) (PSelf)))
+     (< m u)]
+    [(PAnd (? number? m) (PAnd (PGreater (PSelf) (? number? l))
+                               (PGreater (? number? u) (PSelf))))
+     (and (> m l) (< m u))]
+    [(PAnd p (? number? m))
+     (is-valid-pred? (PAnd m p))]   
+    [(or (PAnd (PGreater (PSelf) _) (PGreater (PSelf) _))
+         (PAnd (PGreater _ (PSelf)) (PGreater _ (PSelf))))
+     #t]
+    [(PAnd (PGreater (PSelf) (? number? l)) (PGreater (? number? u) (PSelf)))
+     (<= l u)]
+    
+    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
+                 (PGreater (? number? u1) (PSelf)))
+           (PAnd (PGreater (PSelf) (? number? l2))
+                 (PGreater (? number? u2) (PSelf))))
+     (< (max l1 l2) (min u1 u2))]
+    
+    [(PAnd l r) (and (is-valid-pred? l) (is-valid-pred? r))]
+    [(PGreater _ _) #f]
+    [else #t]))
+
+
+; Predicate -> Predicate
+(define (reduce pred)
+  (match pred
+    [(PAnd (? number? m) (? PGreater?))
+     m]
+    [(PAnd (? PGreater?) (? number? m))
+     m]
+    [(PAnd (? number? m) (PAnd (PGreater (PSelf) l)
+                               (PGreater u (PSelf))))
+     m]
+    [(PAnd (PGreater (PSelf) (? number? m))
+           (PGreater (PSelf) (? number? n)))
+     (PAnd (PGreater (PSelf) (max m n))
+           (PGreater +inf.f (PSelf)))]
+    [(PAnd (PGreater (? number? m) (PSelf))
+           (PGreater (? number? n) (PSelf)))
+     (PAnd (PGreater (PSelf) -inf.f)
+           (PGreater (min m n) (PSelf)))]
+    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
+                 (PGreater (? number? u1) (PSelf)))
+           (PAnd (PGreater (PSelf) (? number? l2))
+                 (PGreater (? number? u2) (PSelf))))
+     (cond
+       [(and (>= l1 l2) (>= u2 u1))
+        (PAnd (PGreater (PSelf) l1)
+              (PGreater u1 (PSelf)))]
+       [(and (>= l2 l1) (>= u1 u2))
+        (PAnd (PGreater (PSelf) l2)
+              (PGreater u2 (PSelf)))]
+       [(and (>= u1 l2) (>= u2 l1))
+        (PAnd (PGreater (PSelf) (max l1 l2))
+              (PGreater (min u1 u2) (PSelf)))]
+       [else (error 'reduce "never should happend")])]
+    [(PAnd (PGreater (PSelf) (? number?))
+           (PGreater (? number?) (PSelf)))
+     pred]
+    [(PAnd (? PAnd? l) (? PAnd? r))
+     (reduce (PAnd (reduce l) (reduce r)))]
+    [p p]))
+
+(module+ test
+  (check-true (is-valid-pred? (PAnd 3 (PAnd (PGreater (PSelf) 2)
+                                            (PGreater +inf.f (PSelf))))))
+  
+  (check-true (is-valid-pred? (PAnd 3 (PAnd (PGreater (PSelf) -inf.f)
+                                            (PGreater 4 (PSelf))))))
+  (check-true (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 1)
+                                          (PGreater 9 (PSelf)))
+                                    (PAnd (PGreater (PSelf) 0)
+                                          (PGreater 5 (PSelf))))))
+  (check-true (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
+                                          (PGreater 5 (PSelf)))
+                                    (PAnd (PGreater (PSelf) 1)
+                                          (PGreater 9 (PSelf))))))
+  (check-true (is-valid-pred? (PAnd (PGreater (PSelf) 1)
+                                    (PGreater 5 (PSelf)))))
+  (check-true (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                                    (PAnd (PGreater (PSelf) 0)
+                                          (PGreater (PSelf) 1)))))
+
+  (check-false (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                                     (PAnd (PGreater (PSelf) 1)
+                                           (PGreater 0 (PSelf))))))
+  (check-false (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
+                                           (PGreater 5 (PSelf)))
+                                     (PAnd (PGreater (PSelf) 6)
+                                           (PGreater 9 (PSelf))))))
+  (check-false (is-valid-pred? (PAnd 1 2)))
+  (check-false (is-valid-pred? (PAnd 1 (PGreater (PSelf) 3))))
+
+  (check-equal? (reduce (PAnd 3 (PGreater (PSelf) 2)))
+                3)
+  (check-equal? (reduce (PAnd 3 (PGreater 4 (PSelf))))
+                3)
+ 
+  (check-equal? (reduce (PAnd (PAnd (PGreater (PSelf) 1)
+                                    (PGreater 9 (PSelf)))
+                              (PAnd (PGreater (PSelf) 0)
+                                    (PGreater 5 (PSelf)))))
+                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+  (check-equal? (reduce (PAnd (PAnd (PGreater (PSelf) 0)
+                                    (PGreater 5 (PSelf)))
+                              (PAnd (PGreater (PSelf) 1)
+                                    (PGreater 9 (PSelf)))))
+                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+
+  (check-equal? (reduce (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
+  (check-equal? (reduce (PAnd (PAnd 4 (PGreater (PSelf) 2))
+                              (PAnd (PGreater (PSelf) 0)
+                                    (PGreater (PSelf) 1))))
+                4)
+  (check-equal? (list->set (de/not (IntValue 1)))
+                (set (IntValue 1)))
+  (check-equal? (list->set (de/not (IntValue (PNot 1))))
+                (set (IntValue (PAnd (PGreater (PSelf) 1)
+                                     (PGreater +inf.f (PSelf))))
+                     (IntValue (PAnd (PGreater (PSelf) -inf.f)
+                                     (PGreater 1 (PSelf))))))
+  (check-equal? (list->set (de/not (IntValue (PNot (PGreater (PSelf) 3)))))
+                (set (IntValue 3)
+                     (IntValue (PAnd (PGreater (PSelf) -inf.f)
+                                     (PGreater 3 (PSelf))))))
+  (check-equal? (list->set (de/not (IntValue (PNot (PGreater 3 (PSelf))))))
+                (set (IntValue (PAnd (PGreater (PSelf) 3)
+                                     (PGreater +inf.f (PSelf))))
+                     (IntValue 3))) 
+  (check-equal? (list->set (de/not (IntValue (PNot (PAnd (PGreater (PSelf) 3)
+                                                         (PGreater 5 (PSelf)))))))
+                (set
+                 (IntValue 5)
+                 (IntValue 3)
+                 (IntValue (PAnd (PGreater (PSelf) 5)
+                                 (PGreater +inf.f (PSelf))))
+                 (IntValue (PAnd (PGreater (PSelf) -inf.f)
+                                 (PGreater 3 (PSelf))))))
+  (check-equal? (list->set (de/not (IntValue (PAnd (PNot 3) (PNot 5)))))
+                (set
+                 (IntValue (PAnd (PGreater (PSelf) 3) (PGreater (PSelf) 5)))
+                 (IntValue (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
+                 (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater (PSelf) 5)))
+                 (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater 5 (PSelf))))))
+
+  (check-equal? (list->set (de/or (IntValue 1)))
+                (set (IntValue 1)))
+  (check-equal? (list->set (de/or (IntValue (POr 1 2))))
+                (set (IntValue 2) (IntValue 1)))
+  (check-equal? (list->set (de/or (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf))))))
+                (set (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf))))))
+  (check-equal? (list->set (de/or (IntValue (PNot 2))))
+                (set (IntValue (PNot 2))))
+  (check-equal? (list->set (de/or (IntValue (PGreater (PSelf) 2))))
+                (set (IntValue (PGreater (PSelf) 2))))
+  (check-equal? (list->set (de/or (IntValue (PGreater 3 (PSelf)))))
+                (set (IntValue (PGreater 3 (PSelf)))))
+  (check-equal? (list->set (de/or (IntValue (PAnd (POr (PGreater (PSelf) 5)
+                                                       (PGreater 0 (PSelf)))
+                                                  (POr 1 6)))))
+                (set
+                 (IntValue (PAnd (PGreater (PSelf) 5) 1))
+                 (IntValue (PAnd (PGreater 0 (PSelf)) 6))
+                 (IntValue (PAnd (PGreater 0 (PSelf)) 1))
+                 (IntValue (PAnd (PGreater (PSelf) 5) 6))))    
+  (check-equal? (list->set (de/or (IntValue (POr (PNot 3) (PNot 4)))))
+                (set (IntValue (PNot 3)) (IntValue (PNot 4))))
+
+  (check-equal? (list->set (de/or (IntValue (PAnd (POr 3 (PGreater (PSelf) 5))
+                                                  (PAnd (PGreater 10 (PSelf))
+                                                        (PGreater (PSelf) 2))))))
+                (set
+                 (IntValue (PAnd (PGreater (PSelf) 5)
+                                 (PAnd (PGreater 10 (PSelf)) (PGreater (PSelf) 2))))
+                 (IntValue (PAnd 3
+                                 (PAnd (PGreater 10 (PSelf))
+                                       (PGreater (PSelf) 2))))))
+)
+
+;; ###33###
+(define pred-preprocess
+  (compose list->set
+           (curry map IntValue)
+           (curry map (compose reduce IntValue-pred))
+           (curry filter is-valid-pred?)
+           (curry map reorder-pand)
+           (curry apply set-union)
+           (curry map de/not)
+           de/or))
+
 ; TODO inline/expand
 ; !!!! TODO int/+ int/- int/* bool/and bool/or
 
@@ -80,35 +331,11 @@
     [(#t _) #t]
     [(_ #t) #t]
     [((? number?) (? number?)) (+ p1 p2)]
-    [((? number? l) (PGreater (PSelf) (? number? r)))
-     (PGreater (PSelf) (+ l r))]
-    [((? number? l) (PGreater (? number? r) (PSelf)))
-     (PGreater (+ l r) (PSelf))]
     [((? number? l) (PAnd (PGreater (PSelf) (? number? r1))
                           (PGreater (? number? r2) (PSelf))))
      (PAnd (PGreater (PSelf) (+ l r1))
            (PGreater (+ l r2) (PSelf)))]
     ;;=========
-    [((? PGreater? l) (? number? r))
-     (pred/+ r l)]
-    
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (PSelf) (+ l-num r-num))]
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     #t]
-    [((PGreater (PSelf) (? number? l-num)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PAnd (PGreater (PSelf) (+ l-num r1))
-           (PGreater (+ l-num r2) (PSelf)))]
-    ;;=========
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (PSelf) (? number? r-num)))
-     (pred/+ r-num l-num)]
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (+ l-num r-num) (PSelf))]
-    [((PGreater (? number? l-num) (PSelf)) (PAnd (PGreater (PSelf) (? number? r1))
-                                                 (PGreater (? number? r2) (PSelf))))
-     (PGreater (+ l-num r2) (PSelf))]
-    ;;=========   
     [((PAnd (PGreater (PSelf) (? number? l1))
             (PGreater (? number? u1) (PSelf)))
       (PAnd (PGreater (PSelf) (? number? l2))
@@ -123,35 +350,11 @@
     [(#t _) #t]
     [(_ #t) #t]
     [((? number?) (? number?)) (- p1 p2)]
-    [((? number?) (PGreater (PSelf) (? number? l)))
-     (PGreater (- p1 l) (PSelf))]
-    [((? number?) (PGreater (? number? u) (PSelf)))
-     (PGreater (PSelf) (- p1 u))]
     [((? number?) (PAnd (PGreater (PSelf) (? number? l))
                         (PGreater (? number? u) (PSelf))))
      (PAnd (PGreater (PSelf) (- p1 u))
            (PGreater (- p1 l) (PSelf)))]
     ;;=========
-    [((PGreater (? number?) (PSelf)) (PGreater (? number?) (PSelf)))
-     #t]
-    [((PGreater (PSelf) (? number?)) (PGreater (PSelf) (? number?)))
-     #t]
-    ;;=========
-    [((PGreater (PSelf) (? number? l)) (? number?))
-     (PGreater (PSelf) (- l p2))]    
-    
-    [((PGreater (PSelf) (? number? l)) (PGreater (? number? u) (PSelf)))
-     (PGreater (PSelf) (- l u))]
-    [((PGreater (PSelf) (? number? l)) (PAnd (PGreater (PSelf) (? number?))
-                                             (PGreater (? number? u) (PSelf))))
-     (PGreater (PSelf) (- l u))]
-    ;;=========
-    [((PGreater (? number? u) (PSelf)) (PGreater (PSelf) (? number? l)))
-     (PGreater (- u l) (PSelf))]
-    [((PGreater (? number? u) (PSelf)) (PAnd (PGreater (PSelf) (? number? l))
-                                             (PGreater (? number?) (PSelf))))
-     (PGreater (- u l) (PSelf))]
-    ;;=========   
     [((PAnd (PGreater (PSelf) (? number? l1))
             (PGreater (? number? u1) (PSelf)))
       (PAnd (PGreater (PSelf) (? number? l2))
@@ -162,15 +365,7 @@
             (PGreater (? number? u) (PSelf)))
       (? number?))
      (PAnd (PGreater (PSelf) (- l p2))
-           (PGreater (- u p2) (PSelf)))]    
-    [((PAnd (PGreater (PSelf) (? number?))
-            (PGreater (? number? u) (PSelf)))
-      (PGreater (PSelf) (? number? l)))
-     (PGreater (- u l) (PSelf))]  
-    [((PAnd (PGreater (PSelf) (? number? l))
-            (PGreater (? number?) (PSelf)))
-      (PGreater (? number? u) (PSelf)))
-     (PGreater (PSelf) (- l u))]))
+           (PGreater (- u p2) (PSelf)))]))
 
 
 (define (pred/* p1 p2)
@@ -180,14 +375,6 @@
     [((? zero?) _) 0]
     [(_ (? zero?)) 0]
     [((? number?) (? number?)) (* p1 p2)]
-    [((? number?) (PGreater (PSelf) (? number? l)))
-     (if (positive? p1)
-         (PGreater (PSelf) (* p1 l))
-         (PGreater (* p1 l) (PSelf)))]
-    [((? number?) (PGreater (? number? u) (PSelf)))
-     (if (positive? p1)
-         (PGreater (* p1 u) (PSelf))
-         (PGreater (PSelf) (* p1 u)))]
     [((? number? num) (PAnd (PGreater (PSelf) (? number? l))
                             (PGreater (? number? u) (PSelf))))
      (let* ([candidates (list (* num l) (* num u))]
@@ -196,48 +383,6 @@
        (PAnd (PGreater (PSelf) lower)
              (PGreater upper (PSelf))))]
     ;;=========
-    [((? PGreater? l) (? number? r))
-     (pred/* r l)]   
-    [((PGreater (PSelf) (? number? l1)) (PGreater (PSelf) (? number? l2)))
-     (PGreater (PSelf) (* l1 l2))]
-    [((PGreater (PSelf) (? number? l)) (PGreater (? number? u) (PSelf)))
-     (let* ([candidates (list (* l u) (* l -inf.f) (* +inf.f u))]
-            [upper (max candidates)])
-       (if (infinite? upper)
-           #t
-           (PGreater upper (PSelf))))]    
-    [((PGreater (PSelf) (? number? l1)) (PAnd (PGreater (PSelf) (? number? l2))
-                                              (PGreater (? number? u) (PSelf))))
-     (let* ([candidates (list (* l1 l2) (* l1 u) (* +inf.f l2) (* +inf.f u))]
-            [lower (min candidates)]
-            [upper (max candidates)])
-       (match* (lower upper)
-         [(-inf.f +inf.f) #t]
-         [(-inf.f _) (PGreater upper (PSelf))]
-         [(_ +inf.f) (PGreater (PSelf) lower)]
-         [(_ _) (PAnd (PGreater (PSelf) lower)
-                      (PGreater upper (PSelf)))]))]
-    ;;=========
-    [((PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
-     (pred/+ p2 p1)]    
-    [((PGreater (? number? u1) (PSelf)) (PGreater (? number? u2) (PSelf)))
-     (let* ([candidates (list (* u1 u2) (* u1 -inf.f) (* u2 -inf.f))]
-            [lower (min candidates)])
-       (if (infinite? lower)
-           #t
-           (PGreater (PSelf) lower)))]    
-    [((PGreater (? number? u1) (PSelf)) (PAnd (PGreater (PSelf) (? number? l))
-                                              (PGreater (? number? u2) (PSelf))))
-     (let* ([candidates (list (* u1 l) (* u1 u2) (* -inf.f l) (* -inf.f u2))]
-            [lower (min candidates)]
-            [upper (max candidates)])
-       (match* (lower upper)
-         [(-inf.f +inf.f) #t]
-         [(-inf.f _) (PGreater upper (PSelf))]
-         [(_ +inf.f) (PGreater (PSelf) lower)]
-         [(_ _) (PAnd (PGreater (PSelf) lower)
-                      (PGreater upper (PSelf)))]))]
-    ;;=========   
     [((PAnd (PGreater (PSelf) (? number? l1))
             (PGreater (? number? u1) (PSelf)))
       (PAnd (PGreater (PSelf) (? number? l2))
@@ -247,230 +392,7 @@
             [lower (min candidates)])
        (PAnd (PGreater (PSelf) lower)
              (PGreater upper (PSelf))))]
-    [((? PAnd?) _) (pred/+ p2 p1)]))
-
-
-; IntValue -> [IntValue]
-(define (de/or i)
-  ; Predicate -> [Predicate]
-  (define (aux pred)
-    (match pred
-      [(POr p1 p2) (flatten (list (aux p1) (aux p2)))]
-      [(PAnd p1 p2)
-       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
-         (PAnd (first pair) (second pair)))]
-      [(PNot p) (map PNot (aux p))]
-      [p (list p)]))
-  (define preds (aux (IntValue-pred i)))
-  #; (list->set (map IntValue preds))
-  (remove-duplicates (map IntValue preds)))
-
-; IntValue -> [IntValue]
-(define (de/not i)
-  ; Predicate -> [Predicate]
-  (define (aux pred)
-    (match pred
-      [(PNot (? number? m))
-       (list (PGreater (PSelf) m) (PGreater m (PSelf)))]
-      [(PNot (PGreater (PSelf) m))
-       (list m (PGreater m (PSelf)))]
-      [(PNot (PGreater m (PSelf)))
-       (list m (PGreater (PSelf) m))]
-      [(PNot (PAnd p1 p2))
-       (append (aux (PNot p1)) (aux (PNot p2)))]
-      [(PAnd p1 p2)
-       (for/list ([pair (cartesian-product (aux p1) (aux p2))])
-         (PAnd (first pair) (second pair)))]
-      [p (list p)]))
-  (define preds (aux (IntValue-pred i)))
-  #; (list->set (map IntValue preds))
-  (remove-duplicates (map IntValue preds)))
-
-; Predicate -> Predicate
-(define (reorder-pand pred)
-  (match pred
-    [(PAnd (? PGreater? l) (? number? r))
-     (PAnd r l)]
-    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
-     (swap/pand pred)]
-    [(PAnd l r) (PAnd (reorder-pand l) (reorder-pand r))]
-    [p p]))
-
-; Predicate -> Boolean
-(define (is-valid-pred? pred)
-  (match pred
-    [(PAnd (? number? m) (? number? n))
-     (= m n)]
-    [(PAnd (? number? m) (PGreater (PSelf) (? number? n)))
-     (> m n)]
-    [(PAnd (? number? m) (PGreater (? number? n) (PSelf)))
-     (< m n)]
-    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     (<= l-num r-num)]
-    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
-                 (PGreater (? number? u1) (PSelf)))
-           (PAnd (PGreater (PSelf) (? number? l2))
-                 (PGreater (? number? u2) (PSelf))))
-     (or (and (>= l1 l2) (>= u2 u1))
-         (and (>= l2 l1) (>= u1 u2))
-         (and (>= u1 l2) (>= u2 l1) (>= l2 l1) (>= u2 u1))
-         (and (>= u2 l1) (>= u1 l2) (>= l1 l2) (>= u1 u2)))]
-    [(PAnd l r) (and (is-valid-pred? l) (is-valid-pred? r))]
-    [else #t]))
-
-
-; Predicate -> Predicate
-(define (reduce pred)
-  (match pred
-    [(PAnd (? number? m) (PGreater _ _))
-     m]
-    [(PAnd (PGreater (PSelf) (? number? m))
-           (PGreater (PSelf) (? number? n)))
-     (PGreater (PSelf) (max m n))]
-    [(PAnd (PGreater (? number? m) (PSelf))
-           (PGreater (? number? n) (PSelf)))
-     (PGreater (min m n) (PSelf))]
-    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
-                 (PGreater (? number? u1) (PSelf)))
-           (PAnd (PGreater (PSelf) (? number? l2))
-                 (PGreater (? number? u2) (PSelf))))
-     (cond
-       [(and (>= l1 l2) (>= u2 u1))
-        (PAnd (PGreater (PSelf) l1)
-              (PGreater u1 (PSelf)))]
-       [(and (>= l2 l1) (>= u1 u2))
-        (PAnd (PGreater (PSelf) l2)
-              (PGreater u2 (PSelf)))]
-       [(and (>= u1 l2) (>= u2 l1) (>= l2 l1) (>= u2 u1))
-        (PAnd (PGreater (PSelf) l2)
-              (PGreater u1 (PSelf)))]
-       [(and (>= u2 l1) (>= u1 l2) (>= l1 l2) (>= u1 u2))
-        (PAnd (PGreater (PSelf) l1)
-              (PGreater u2 (PSelf)))]
-       [else (error 'reduce "never should happend")])]
-    [(PAnd (PGreater (PSelf) (? number?))
-           (PGreater (? number?) (PSelf)))
-     pred]
-    [(PAnd (? PAnd? l) (? PAnd? r))
-     (reduce (PAnd (reduce l) (reduce r)))]
-    [p p]))
-
-(module+ test
-  (check-true (is-valid-pred? (PAnd 3 (PGreater (PSelf) 2))))
-  (check-true (is-valid-pred? (PAnd 3 (PGreater 4 (PSelf)))))
-  (check-true (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 1)
-                                          (PGreater 9 (PSelf)))
-                                    (PAnd (PGreater (PSelf) 0)
-                                          (PGreater 5 (PSelf))))))
-  (check-true (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
-                                          (PGreater 5 (PSelf)))
-                                    (PAnd (PGreater (PSelf) 1)
-                                          (PGreater 9 (PSelf))))))
-  (check-true (is-valid-pred? (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf)))))
-  (check-true (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
-                                    (PAnd (PGreater (PSelf) 0)
-                                          (PGreater (PSelf) 1)))))
-  (check-false (is-valid-pred? (PAnd (PAnd 4 (PGreater (PSelf) 2))
-                                     (PAnd (PGreater (PSelf) 1)
-                                           (PGreater 0 (PSelf))))))
-  (check-false (is-valid-pred? (PAnd (PAnd (PGreater (PSelf) 0)
-                                           (PGreater 5 (PSelf)))
-                                     (PAnd (PGreater (PSelf) 6)
-                                           (PGreater 9 (PSelf))))))
-  (check-false (is-valid-pred? (PAnd 1 2)))
-  (check-false (is-valid-pred? (PAnd 1 (PGreater (PSelf) 3))))
-  
-  (check-equal? (reduce (PAnd 3 (PGreater (PSelf) 2)))
-                3)
-  (check-equal? (reduce (PAnd 3 (PGreater 4 (PSelf))))
-                3)
-  (check-equal? (reduce (PAnd (PAnd (PGreater (PSelf) 1)
-                                    (PGreater 9 (PSelf)))
-                              (PAnd (PGreater (PSelf) 0)
-                                    (PGreater 5 (PSelf)))))
-                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
-  (check-equal? (reduce (PAnd (PAnd (PGreater (PSelf) 0)
-                                    (PGreater 5 (PSelf)))
-                              (PAnd (PGreater (PSelf) 1)
-                                    (PGreater 9 (PSelf)))))
-                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
-  (check-equal? (reduce (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
-                (PAnd (PGreater (PSelf) 1) (PGreater 5 (PSelf))))
-  (check-equal? (reduce (PAnd (PAnd 4 (PGreater (PSelf) 2))
-                              (PAnd (PGreater (PSelf) 0)
-                                    (PGreater (PSelf) 1))))
-                4)
-
-
-  
-  (check-equal? (list->set (de/not (IntValue 1)))
-                (set (IntValue 1)))
-  (check-equal? (list->set (de/not (IntValue (PNot 1))))
-                (set (IntValue (PGreater (PSelf) 1))
-                     (IntValue (PGreater 1 (PSelf)))))
-
-  (check-equal? (list->set (de/not (IntValue (PNot (PGreater (PSelf) 3)))))
-                (set (IntValue 3)
-                     (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (list->set (de/not (IntValue (PNot (PGreater 3 (PSelf))))))
-                (set (IntValue (PGreater (PSelf) 3))
-                     (IntValue 3)))
-  (check-equal? (list->set (de/not (IntValue (PNot (PAnd (PGreater (PSelf) 3)
-                                                         (PGreater 5 (PSelf)))))))
-                (set
-                 (IntValue 5)
-                 (IntValue 3)
-                 (IntValue (PGreater (PSelf) 5))
-                 (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (list->set (de/not (IntValue (PAnd (PNot 3) (PNot 5)))))
-                (set
-                 (IntValue (PAnd (PGreater (PSelf) 3) (PGreater (PSelf) 5)))
-                 (IntValue (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
-                 (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater (PSelf) 5)))
-                 (IntValue (PAnd (PGreater 3 (PSelf)) (PGreater 5 (PSelf))))))
- 
-  (check-equal? (list->set (de/or (IntValue 1)))
-                (set (IntValue 1)))
-  (check-equal? (list->set (de/or (IntValue (POr 1 2))))
-                (set (IntValue 2) (IntValue 1)))
-  (check-equal? (list->set (de/or (IntValue (PAnd (PGreater (PSelf) 1) (PGreater 2 (PSelf))))))
-                (set (IntValue (PAnd (PGreater (PSelf) 1)(PGreater 2 (PSelf))))))
-  (check-equal? (list->set (de/or (IntValue (PNot 2))))
-                (set (IntValue (PNot 2))))
-  (check-equal? (list->set (de/or (IntValue (PGreater (PSelf) 2))))
-                (set (IntValue (PGreater (PSelf) 2))))
-  (check-equal? (list->set (de/or (IntValue (PGreater 3 (PSelf)))))
-                (set (IntValue (PGreater 3 (PSelf)))))
-  (check-equal? (list->set (de/or (IntValue (PAnd (POr (PGreater (PSelf) 5)
-                                                       (PGreater 0 (PSelf)))
-                                                  (POr 1 6)))))
-                (set
-                 (IntValue (PAnd (PGreater (PSelf) 5) 1))
-                 (IntValue (PAnd (PGreater 0 (PSelf)) 6))
-                 (IntValue (PAnd (PGreater 0 (PSelf)) 1))
-                 (IntValue (PAnd (PGreater (PSelf) 5) 6))))
-  (check-equal? (list->set (de/or (IntValue (POr (PNot 3) (PNot 4)))))
-                (set (IntValue (PNot 3)) (IntValue (PNot 4))))
-  (check-equal? (list->set (de/or (IntValue (PAnd (POr 3 (PGreater (PSelf) 5))
-                                                  (PAnd (PGreater 10 (PSelf))
-                                                        (PGreater (PSelf) 2))))))
-                (set
-                 (IntValue (PAnd (PGreater (PSelf) 5)
-                                 (PAnd (PGreater 10 (PSelf)) (PGreater (PSelf) 2))))
-                 (IntValue (PAnd 3
-                                 (PAnd (PGreater 10 (PSelf))
-                                       (PGreater (PSelf) 2)))))))
-
-;; ###33###
-(define pred-preprocess
-  (compose list->set
-           (curry map IntValue)
-           (curry map (compose reduce IntValue-pred))
-           (curry filter is-valid-pred?)
-           (curry map reorder-pand)
-           (curry apply set-union)
-           (curry map de/not)
-           de/or))
+    [((? PAnd?) _) (pred/* p2 p1)]))
 
 
 ; IntValue IntValue -> Set(IntValue)
@@ -526,56 +448,11 @@
               (BoolValue (True))
               (BoolValue (False))))]
     [((IntValue (? number? num))
-      (IntValue (PGreater (PSelf) (? number? l))))
-     (if (<= num l)
-         (set (BoolValue (False)))
-         all-bools)]
-    [((IntValue (? number? num))
-      (IntValue (PGreater (? number? u)  (PSelf))))
-     (if (>= num u)
-         (set (BoolValue (False)))
-         all-bools)]
-    [((IntValue (? number? num))
       (IntValue (PAnd (PGreater (PSelf) (? number? l))
                       (PGreater (? number? u) (PSelf)))))
      (if (or (>= num u) (<= num l))
          (Set (BoolValue (False)))
          all-bools)]
-    ;; =======
-    [((IntValue (PGreater (PSelf) (? number? l)))
-      (IntValue (? number? num)))
-     (int/eq r l)]
-    [((IntValue (PGreater (PSelf) (? number?)))
-      (IntValue (PGreater (PSelf) (? number?))))
-     all-bools]
-    [((IntValue (PGreater (PSelf) (? number? l)))
-      (IntValue (PGreater (? number? u) (PSelf))))
-     (if (>= l u)
-         (set (BoolValue (False)))
-         all-bools)]
-    [((IntValue (PGreater (PSelf) (? number? l1)))
-      (IntValue (PAnd (PGreater (PSelf) (? number? l2))
-                      (PGreater (? number? u) (PSelf)))))
-     (if (>= l1 u)
-         (set (BoolValue (False)))
-         all-bools)]
-    ;; =======
-    [((IntValue (PGreater (? number? l) (PSelf)))
-      (IntValue (? number? num)))
-     (int/eq r l)]
-    [((IntValue (PGreater (? number?) (PSelf)))
-      (IntValue (PGreater (? number?) (PSelf))))
-     all-bools]
-    [((IntValue (PGreater (? number? u) (PSelf)))
-      (IntValue (PGreater (PSelf) (? number? l))))
-     (int/eq r l)]
-    [((IntValue (PGreater (? number? u) (PSelf)))
-      (IntValue (PAnd (PGreater (PSelf) (? number? l))
-                      (PGreater (? number?) (PSelf)))))
-     (if (<= l u)
-         (set (BoolValue (False)))
-         all-bools)]
-    ;; =======
     [((IntValue (PAnd (PGreater (PSelf) (? number? l1))
                       (PGreater (? number? u1) (PSelf))))
       (IntValue (PAnd (PGreater (PSelf) (? number? l2))
@@ -584,6 +461,7 @@
              (and (>= l1 l2) (<= l1 u2)))
          all-bools
          (set (BoolValue (False))))]
+
     [((IntValue (PAnd (PGreater (PSelf) (? number?))
                       (PGreater (? number?) (PSelf))))
       _)
@@ -601,372 +479,19 @@
               (BoolValue (True))
               (BoolValue (False))))]
     [((IntValue (? number? num))
-      (IntValue (PGreater (PSelf) (? number? l))))
-     (if (<= num l)
-         (set (BoolValue (False)))
-         all-bools)]
-    [((IntValue (? number? num))
-      (IntValue (PGreater (? number? u)  (PSelf))))
-     (if (>= num u)
-         (set (BoolValue (True)))
-         all-bools)]
-    [((IntValue (? number? num))
       (IntValue (PAnd (PGreater (PSelf) (? number? l))
                       (PGreater (? number? u) (PSelf)))))
      (cond [(>= num u) (set (BoolValue (True)))]
            [(<= num l) (set (BoolValue (True)))]
            [else all-bools])]
-    ;; =======
-    [((IntValue (PGreater (PSelf) (? number? l)))
-      (IntValue (? number? num)))
-     (if (<= num l)
-         (set (BoolValue (True)))
-         all-bools)]
-    [((IntValue (PGreater (PSelf) (? number?)))
-      (IntValue (PGreater (PSelf) (? number?))))
-     all-bools]
-    [((IntValue (PGreater (PSelf) (? number? l)))
-      (IntValue (PGreater (? number? u) (PSelf))))
-     (if (>= l u)
-         (set (BoolValue (True)))
-         all-bools)]
-    [((IntValue (PGreater (PSelf) (? number? l)))
-      (IntValue (PAnd (PGreater (PSelf) (? number?))
-                      (PGreater (? number? u) (PSelf)))))
-     (if (>= l u)
-         (set (BoolValue (True)))
-         all-bools)]
-    ;; =======
-    [((IntValue (PGreater (? number? u) (PSelf)))
-      (IntValue (? number? num)))
-     (if (>= num u)
-         (set (BoolValue (False)))
-         all-bools)]
-    [((IntValue (PGreater (? number?) (PSelf)))
-      (IntValue (PGreater (? number?) (PSelf))))
-     all-bools]
-    [((IntValue (PGreater (? number? u) (PSelf)))
-      (IntValue (PGreater (PSelf) (? number? l))))
-     (if (<= u l)
-         (set (BoolValue (False)))
-         all-bools)]   
-    [((IntValue (PGreater (? number? u) (PSelf)))
-      (IntValue (PAnd (PGreater (PSelf) (? number? l))
-                      (PGreater (? number?) (PSelf)))))
-     (if (<= u 1)
-         (set (BoolValue (False)))
-         all-bools)]    
-    ;; =======
     [((IntValue (PAnd (PGreater (PSelf) (? number? l1))
                       (PGreater (? number? u1) (PSelf))))
       (IntValue (PAnd (PGreater (PSelf) (? number? l2))
                       (PGreater (? number? u2) (PSelf)))))
      (if (> l1 u2)
          (set (BoolValue (True)))
-         all-bools)]
-    [((PAnd (PGreater (PSelf) (? number? l))
-            (PGreater (? number?) (PSelf)))
-      (? number? num))
-     (if (>= l num)
-         (set (BoolValue (True)))
-         all-bools)]
-    [((PAnd (PGreater (PSelf) (? number?))
-            (PGreater (? number? u) (PSelf)))
-      (PGreater (PSelf) (? number? l)))
-     (if (>= l u)
-         (set (BoolValue (False)))
-         all-bools)]    
-    [((PAnd (PGreater (PSelf) (? number? l))
-            (PGreater (? number?) (PSelf)))
-      (PGreater (? number? u) (PSelf)))
-     (if (>= l u)
-         (set (BoolValue (True)))
          all-bools)]))
 
 
 (define (swap/pand p)
   (match p [(PAnd l r) (PAnd r l)]))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-#|
-
-(define (norm/por p)
-  (match p
-    [(POr a b) (PNot (PAnd (PNot (norm/por a)) (PNot (norm/por b))))]
-    [p p]))
-
-(define (norm/pnot p)
-  (match p
-    [(or (? number?) (? True?) (? False?)) p]
-    [(PNot (True)) (False)]
-    [(PNot (False)) (True)]
-    [(PNot (? number?)) p]
-    [(PNot (PNot p1)) (norm/pnot p1)]
-    [(PNot (? PAnd? pa))
-     (match (norm/pand pa)
-       [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf))) -1]
-       [normed (norm/pnot (PNot normed))])]
-    [(PNot (PGreater (PSelf) (? number? n))) -1]
-    [(PNot (PGreater (? number? n) (PSelf))) -1]))
-
-(module+ test
-  (check-equal? (norm/pnot (PNot 3)) (PNot 3))
-  (check-equal? (norm/pnot (PNot (PNot 3))) 3)
-  (check-equal? (norm/pnot (PNot (True))) (False))
-  (check-equal? (norm/pnot (PNot (False))) (True))
-  (check-equal? (norm/pnot (PNot (PNot (PNot (False))))) (True))
-  (check-equal? (norm/pnot (PNot (PNot (PNot (PNot (False)))))) (False)))
-
-(define (norm/pand p)
-  (match p
-    [(PAnd (True) (True)) (True)]
-    [(PAnd (False) _) (False)]
-    [(PAnd _ (False)) (False)]
-
-    [(PAnd (? number? l) (? number? r))
-     (check-true (= l r))
-     l]
-    ; (int & _ > int)
-    [(PAnd (? number? l-num) (PGreater (PSelf) (? number? r-num)))
-     (check-true (>= l-num r-num))
-     l-num]
-    ; (int & _ < int)
-    [(PAnd (? number? l-num) (PGreater (? number? r-num) (PSelf)))
-     (check-true (<= l-num r-num))
-     l-num]
-    ; (_ > _ & int) -> (int & _ > _)
-    [(PAnd (PGreater _ _) (? number?)) (norm/pand (swap/pand p))]
-    
-    ; (_ > int & _ > int)
-    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (PSelf) (max l-num r-num))]
-    ; (_ < int & _ < int)
-    [(PAnd (PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (min l-num r-num) (PSelf))]
-    ; (_ > int & _ < int)
-    [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     (check-true (<= l-num r-num))
-     (if (= l-num r-num) l-num p)]
-    ; (_ < int & _ > int)
-    [(PAnd (PGreater (? number?) (PSelf)) (PGreater (PSelf) (? number?)))
-     (norm/pand (swap/pand p))]
-    
-    ; ((_ > int & _ < int) & (_ > int & _ < int))
-    [(PAnd (PAnd (PGreater (PSelf) (? number? l1))
-                 (PGreater (? number? r1) (PSelf)))
-           (PAnd (PGreater (PSelf) (? number? l2))
-                 (PGreater (? number? r2) (PSelf))))
-     (norm/pand (PAnd (PGreater (PSelf) (max l1 l2))
-                      (PGreater (min r1 r2) (PSelf))))]
-    
-    [(PAnd (PAnd (PGreater (PSelf) (? number? pl))
-                 (PGreater (? number? pr) (PSelf)))
-           (PGreater (PSelf) (? number? l)))
-     (norm/pand (PAnd (PGreater (PSelf) (max l pl)) (PGreater pr (PSelf))))]
-    [(PAnd (PAnd (PGreater (PSelf) (? number? pl))
-                 (PGreater (? number? pr) (PSelf)))
-           (PGreater (? number? u) (PSelf)))
-     (norm/pand (PAnd (PGreater (PSelf) pl) (PGreater (min u pr) (PSelf))))]
-    
-    [(PAnd (? PAnd? l) (? PAnd? r))
-     (norm/pand (PAnd (norm/pand l) (norm/pand r)))]
-    [(PAnd (PAnd pl pr) r)
-     (norm/pand (PAnd (norm/pand (PAnd pl r))
-                      (norm/pand (PAnd pr r))))]
-    [(PAnd l (? PAnd? r)) (norm/pand (PAnd r l))]
-
-    [(PAnd (? PNot? n1) (? PNot? n2)) (norm/pand (norm/pnot n1) (norm/pnot n2))]
-    [(PAnd (? PNot? n) (? number? r))
-     (norm/pand (PAnd (norm/pnot n) r))]
-    [(PAnd (? PNot? n) (PGreater (PSelf) (? number? r-num))) -1]
-    [(PAnd l (? PNot? r)) -1]
-    ; TODO
-    
-    [p (printf "warning: ~a\n" p) p]))
-
-(define (pred+ l r)
-  (match* (l r)
-    [(#t _) #t]
-    [(_ #t) #t]
-    ;;;;;;;;;;;;;;;;
-    [((? number?) (? number?)) (+ l r)]
-    [((? number?) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (PSelf) (+ l r-num))]
-    [((? number?) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (+ l r-num) (PSelf))]
-    [((? number?) (? PAnd?))
-     (match (norm/pand r)
-       [(PAnd (PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-        (PAnd (PGreater (PSelf) (+ l l-num)) (PGreater (+ l r-num) (PSelf)))]
-       [r (pred+ l r)])]
-    [((? number?) (POr p1 p2))
-     (norm/por (POr (pred+ l p1) (pred+ l p2)))]
-    [((? number?) (PNot p))
-     (PNot (pred+ l p))]
-    [((PGreater _ _) (? number?)) (pred+ r l)]
-    [((PAnd _ _) (? number?)) (pred+ r l)]
-    [((POr _ _) (? number?)) (pred+ r l)]
-    [((PNot _) (? number?)) (pred+ r l)]
-    ;;;;;;;;;;;;;;;;
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (PSelf) (? number? r-num)))
-     (PGreater (PSelf) (+ l-num r-num))]
-    [((PGreater (PSelf) (? number? l-num)) (PGreater (? number? r-num) (PSelf)))
-     #t]
-    [((PGreater (? number? l-num) (PSelf)) (PGreater (? number? r-num) (PSelf)))
-     (PGreater (+ l-num r-num) (PSelf))]
-    [((PGreater (? number?) (PSelf)) (PGreater (PSelf) _))
-     (pred+ r l)]
-    [((PGreater (PSelf) (? number? l-num)) (? PAnd?))
-     (match (norm/pand r)
-       [(PAnd (PGreater (PSelf) (? number? p-l-num)) (PGreater (? number? p-r-num) (PSelf)))
-        (PAnd (PGreater (PSelf) (+ l-num p-l-num)) (PGreater (+ l-num p-r-num) (PSelf)))]
-       [r (pred+ l r)])]
-    [((PGreater (? number? l-num) (PSelf)) (? PAnd?))
-     (match (norm/pand r)
-       [(PAnd (PGreater (PSelf) (? number? p-l-num)) (PGreater (? number? p-r-num) (PSelf)))
-        (PGreater (+ l-num p-r-num) (PSelf))]
-       [r (pred+ l r)])]
-    [((PGreater _ _) (POr p1 p2))
-     (norm/por (POr (pred+ l p1) (pred+ l p2)))]
-    [((PGreater _ _) (PNot p))
-     (PNot (pred+ l p))]
-    [((PAnd _ _) (PGreater _ _)) (pred+ r l)]
-    [((POr _ _) (PGreater _ _)) (pred+ r l)]
-    [((PNot _) (PGreater _ _)) (pred+ r l)]
-    ;;;;;;;;;;;;;;;;
-    [((PAnd _ _) (PAnd _ _))
-     (match* ((norm/pand l) (norm/pand r))
-       [((PAnd (PGreater (PSelf) (? number? l1)) (PGreater (? number? u1) (PSelf)))
-         (PAnd (PGreater (PSelf) (? number? l2)) (PGreater (? number? u2) (PSelf))))
-        (PAnd (PGreater (PSelf) (+ l1 l2)) (PGreater (+ u1 u2) (PSelf)))]
-       [(pl pr) (pred+ pl pr)])]
-    [((PAnd p11 p12) (POr p21 p22))
-     (pred+ (norm/pand l) (norm/por r))]
-    [((PAnd p11 p12) (PNot p))
-     (match* ((norm/pand l) r)
-       [((? PAnd? norm-l) _) (PNot (pred+ norm-l p))]
-       [(norm-l _) (pred+ norm-l r)])]
-    ;[((POr _ _) (PAnd _ _)) (pred+ r l)]
-    [((PNot _) (PAnd _ _)) (pred+ r l)]
-    ;;;;;;;;;;;;;;;;
-    ;[((POr p11 p12) (POr p21 p22)) -1]
-    ;[((POr p11 p12) (PNot p)) -1]
-    ;[((PNot _) (POr _ _)) (pred+ r l)]
-    ;;;;;;;;;;;;;;;;
-    [((PNot p1) (PNot p2)) #t]
-    [(_ _) (error 'pred+ "unknown predicate ~a ~a" l r)]))
-
-(module+ test
-  (check-equal? (norm/pand (PAnd (PAnd (True) (False)) (PAnd (True) (True))))
-                (False))
-  (check-equal? (norm/pand (PAnd (PAnd (True) (True)) (PAnd (True) (True))))
-                (True))
-  (check-equal? (norm/pand (PAnd 5 5))
-                5)
-  (check-equal? (norm/pand (PAnd 3 (PGreater 6 (PSelf))))
-                3)
-  (check-equal? (norm/pand (PAnd (PGreater 5 (PSelf)) (PGreater 3 (PSelf))))
-                (PGreater 3 (PSelf)))
-  (check-equal? (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
-                (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf))))
-  (check-equal? (norm/pand (PAnd (PGreater (PSelf) 3) (PGreater 3 (PSelf))))
-                3)
-  (check-equal? (norm/pand (PAnd 3 (PAnd (PGreater (PSelf) 2) (PGreater 5 (PSelf)))))
-                3)
-  (check-equal? (norm/pand (PAnd (PGreater 15 (PSelf)) (PGreater (PSelf) 10)))
-                (PAnd (PGreater (PSelf) 10) (PGreater 15 (PSelf))))
-  (check-equal? (norm/pand (PAnd (PAnd (PGreater (PSelf) 3) (PGreater 5 (PSelf)))
-                                 (PAnd (PGreater (PSelf) 5) (PGreater 9 (PSelf)))))
-                5)
-  (check-equal? (norm/pand (PAnd (PAnd (PAnd (PGreater (PSelf) 0) (PGreater 9 (PSelf)))
-                                       (PAnd (PGreater (PSelf) 3) (PGreater 8 (PSelf))))
-                                 (PAnd (PGreater (PSelf) 5) (PGreater 9 (PSelf)))))
-                (PAnd (PGreater (PSelf) 5) (PGreater 8 (PSelf))))
-  (check-equal? (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
-                                 4))
-                4)
-  (check-equal? (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
-                                 (PGreater (PSelf) 3)))
-                (PAnd (PGreater (PSelf) 3) (PGreater 9 (PSelf))))
-  (check-equal? (norm/pand (PAnd (PAnd (PGreater (PSelf) 2) (PGreater 9 (PSelf)))
-                                 (PGreater 7 (PSelf))))
-                (PAnd (PGreater (PSelf) 2) (PGreater 7 (PSelf))))
-  (check-equal? (norm/pand (PAnd (PAnd (PGreater 10 (PSelf)) (PGreater (PSelf) 3))
-                                 (PAnd (PGreater 11 (PSelf)) (PGreater (PSelf) 4))))
-                (PAnd (PGreater (PSelf) 4) (PGreater 10 (PSelf)))))
-
-(module+ test
-  (norm/por (POr 8 (PGreater (PSelf) 1))))
-
-(module+ test
-  (check-equal? (pred+ #t 3) #t)
-  (check-equal? (pred+ 3 #t) #t)
-  (check-equal? (pred+ 3 4) 7)
-  (check-equal? (pred+ 4 (PGreater (PSelf) 5))
-                (PGreater (PSelf) 9))
-  (check-equal? (pred+ -4 (PGreater 5 (PSelf)))
-                (PGreater 1 (PSelf)))
-  (check-equal? (pred+ (PGreater (PSelf) 3) 5)
-                (PGreater (PSelf) 8))
-  (check-equal? (pred+ (PGreater 3 (PSelf)) 5)
-                (PGreater 8 (PSelf)))
-  (check-equal? (pred+ 3 (PAnd (PGreater (PSelf) 1) (PGreater (PSelf) 4)))
-                (PGreater (PSelf) 7))
-  (check-equal? (pred+ (PGreater (PSelf) 3) (PGreater (PSelf) 5))
-                (PGreater (PSelf) 8))
-  (check-equal? (pred+ (PGreater (PSelf) 3) (PGreater 5 (PSelf)))
-                #t)
-  (check-equal? (pred+ (PGreater 3 (PSelf)) (PGreater 3 (PSelf)))
-                (PGreater 6 (PSelf)))
-  (check-equal? (pred+ (PGreater 3 (PSelf)) (PGreater (PSelf) 5))
-                #t)
-  (check-equal? (pred+ (PAnd 3 (PGreater (PSelf) 2)) (PAnd (PGreater (PSelf) 5) 10))
-                13)
-  (check-equal? (pred+ (PGreater (PSelf) 5) (PAnd (PGreater (PSelf) 6) (PGreater 8 (PSelf))))
-                (PAnd (PGreater (PSelf) 11) (PGreater 13 (PSelf))))
-  (check-equal? (pred+ (PGreater (PSelf) 5) (PAnd 5 (PGreater (PSelf) 3)))
-                (PGreater (PSelf) 10))
-  (check-equal? (pred+ (PGreater 5 (PSelf)) (PAnd (PGreater (PSelf) 6) (PGreater 8 (PSelf))))
-                (PGreater 13 (PSelf)))
-  (check-equal? (pred+ (PGreater 5 (PSelf)) (PAnd 5 (PGreater (PSelf) 3)))
-                (PGreater 10 (PSelf)))
-  (check-equal? (pred+ (PAnd (PAnd (PGreater (PSelf) 1)
-                                   (PGreater 5 (PSelf)))
-                             (PAnd (PGreater (PSelf) 3)
-                                   (PGreater 7 (PSelf))))
-                       3)
-                (PAnd (PGreater (PSelf) 6) (PGreater 8 (PSelf))))
-  (check-equal? (pred+ (PAnd (PAnd (PGreater (PSelf) 1)
-                                   (PGreater 5 (PSelf)))
-                             (PAnd (PGreater (PSelf) 3)
-                                   (PGreater 7 (PSelf))))
-                       3)
-                (PAnd (PGreater (PSelf) 6) (PGreater 8 (PSelf))))
-
-  ;(pred+ 3 (PAnd (PNot 8) (PGreater (PSelf) 1)))
-  
-  (check-equal? (pred+ (PAnd (PAnd (PGreater (PSelf) 3)
-                                   (PGreater 7 (PSelf)))
-                             (PAnd (PGreater (PSelf) 1)
-                                   (PGreater 5 (PSelf))))
-                       (PAnd (PAnd (PGreater (PSelf) 10)
-                                   (PGreater 15 (PSelf)))
-                             (PAnd (PGreater (PSelf) 12)
-                                   (PGreater 17 (PSelf)))))
-                (PAnd (PGreater (PSelf) 15) (PGreater 20 (PSelf))))
-  
-  (check-equal? (pred+ (PAnd (PAnd (PGreater (PSelf) 3)
-                                   (PAnd (PGreater (PSelf) 4)
-                                         (PGreater 6 (PSelf))))
-                             (PAnd (PGreater (PSelf) 1)
-                                   (PGreater 5 (PSelf))))
-                       (PAnd (PAnd (PGreater (PSelf) 10)
-                                   (PGreater 15 (PSelf)))
-                             (PAnd (PGreater (PSelf) 12)
-                                   (PGreater 17 (PSelf)))))
-                (PAnd (PGreater (PSelf) 16) (PGreater 20 (PSelf))))
-  
-  (check-equal? (pred+ (PNot 3) (PNot 5)) #t))
-
-|#
