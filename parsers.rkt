@@ -3,8 +3,7 @@
 (require srfi/1)
 (require rackunit)
 (require "structs.rkt")
-; (require "pred.rkt")
-(require "new-pred.rkt")
+(require "pred.rkt")
 
 (provide parse
          define-types->hash)

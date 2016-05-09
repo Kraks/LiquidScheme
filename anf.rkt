@@ -16,8 +16,7 @@ abs:
 ; TODO: z3
 
 (require rackunit)
-; (require "pred.rkt")
-(require "new-pred.rkt")
+(require "pred.rkt")
 (require "parsers.rkt")
 (require "structs.rkt")
 
