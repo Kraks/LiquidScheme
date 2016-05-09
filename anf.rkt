@@ -404,8 +404,7 @@ abs:
                 '(and (> x 3) (> 5 x)))
   (check-equal? (pred-set->z3 (set (PAnd (PGreater (PVar 'x) 3) (PGreater 5 (PVar 'x)))
                                    (PAnd (PGreater (PVar 'x) 6) (PGreater 9 (PVar 'x)))) 'x)
-                '(or ((and (> x 6) (> 9 x))
-                      (and (> x 3) (> 5 x))))))
+                '(or ((and (> x 3) (> 5 x)) (and (> x 6) (> 9 x))))))
 
 (define (transform v)
   (match v
@@ -424,7 +423,7 @@ abs:
         (printf "Error: contract violated: ~a\n" func-name))))
   (void))
 
-; TArrow Set(TArrow) -> Boolean
+; TArrow Set(TArrow) symbol -> Boolean
 (define (check-contract instance contracts func-name)
   (define arg (set-first (TArrow-arg instance)))
   (define ret (set-first (TArrow-ret instance)))
