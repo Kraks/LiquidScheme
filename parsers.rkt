@@ -7,27 +7,6 @@
 
 (provide parse
          define-types->hash)
-#;
-(define (define-types->hash t-defs)
-  (define (merge-define-types define-types)
-    (define (aux dt lst)
-      (define dname (DefineType-name dt))
-      (define dtype (DefineType-type dt))
-      (define exist-type (assoc dname lst))
-      (define dtypes (if exist-type
-                         (set-add (cdr exist-type) dtype)
-                         (set dtype)))
-      (define idx (list-index (curry equal? exist-type) lst))
-      (if idx
-          (list-set lst idx (cons dname dtypes))
-          (cons (cons dname dtypes) lst)))
-    (foldl aux
-           '()
-           define-types))
-  (define h (make-hash (merge-define-types (map parse-type-def t-defs))))
-  (for/hash ([k (hash-keys h)])
-            (values k (hash-ref h k))))
-
 
 (define (reform-definetype deftp)
   (define deftp-name (DefineType-name deftp))
@@ -58,35 +37,6 @@
   (define h (make-hash (merge-define-types (append-map (compose reform-definetype parse-type-def) t-defs))))
   (for/hash ([k (hash-keys h)])
             (values k (hash-ref h k))))
-
-
-#;
-(define (parse-type-def tdef)
-  (define (parse-type exp)
-    (match exp
-      [(? integer?) (pred-preprocess (IntValue exp))]
-      ['Int (pred-preprocess (IntValue #t))]
-      ['Bool (BoolValue #t)]
-      ['Any (TAny)]
-      ['_ (PSelf)]
-      ['true (BoolValue (True))]
-      ['false (BoolValue (False))]
-      [`(-> ,in-type ,out-type)
-       (let* ([it (parse-type in-type)]
-              [ot (parse-type out-type)]
-              [fit (if (set? it)
-                       it
-                       (set it))]
-              [fot (if (set? ot)
-                       ot
-                       (set ot))])
-         (TArrow fit fot))]
-      [`(Int ,pred) (pred-preprocess (IntValue (parse-pred pred)))]
-      [`(Bool ,pred) (BoolValue (parse-pred pred))]))
-  (match tdef
-    [`(: ,name ,type) (DefineType name (parse-type type))]
-    [_ (error 'parse-type-def "not a type definition")]))
-
 
 
 (define (parse-type-def tdef)
@@ -173,34 +123,6 @@
     [`(letrec ((,lhs ,rhs)) ,body) (Letrec lhs (parse rhs) (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
-
-#|
-(define (parse exp)
-  (match exp
-    ['true (Bool (True))]
-    ['false (Bool (False))]
-    ['(void) (Void)]
-    [(? integer? n) (Int n)]
-    [(? symbol?) (Var exp)]
-    [`(+ ,lhs ,rhs) (Plus (parse lhs) (parse rhs))]
-    [`(- ,lhs ,rhs) (Minus (parse lhs) (parse rhs))]
-    [`(* ,lhs ,rhs) (Mult (parse lhs) (parse rhs))]
-    [`(= ,lhs ,rhs) (NumEq (parse lhs) (parse rhs))]
-    [`(and ,lhs ,rhs) (And (parse lhs) (parse rhs))]
-    [`(or ,lhs ,rhs) (Or (parse lhs) (parse rhs))]
-    [`(not ,bl) (Not (parse bl))]
-    [`(set! ,var ,val) (Set var (parse val))]
-    [`(if ,tst ,thn ,els) (If (parse tst) (parse thn) (parse els))]
-    [`(begin ,s1 ,s2) (Begin (parse s1) (parse s2))]
-    [`(,(or 'lambda 'λ) ,label (,var) ,body) (Lam label var (parse body))]
-    [`(,(or 'lambda 'λ) (,var) ,body) (Lam (gensym 'λ) var (parse body))]
-    [`(let ((,lhs ,rhs)) ,body) (App (Lam (gensym 'let) lhs (parse body)) (parse rhs))]
-    [`(letrec ((,lhs ,rhs)) ,body)
-     (parse `(let ((,lhs (void)))
-               (begin (set! ,lhs ,rhs)
-                      ,body)))]
-    [`(,rator ,rand) (App (parse rator) (parse rand))]))
-|#
 
 ;; TODO:
 ; below:  pred-processing preds

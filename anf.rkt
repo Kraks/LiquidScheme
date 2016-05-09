@@ -417,79 +417,6 @@ abs:
     [(BoolValue p) (Bool p)]))
 
 ; Expr Hash -> Void
-#|
-#;
-(define (reform-tarrows tarrows)
-  (define (aux ta)
-    (let ([in-contracts (TArrow-arg ta)]
-          [out-contract (TArrow-ret ta)])
-      (set-map in-contracts (lambda (in-c) (TArrow in-c out-contract)))))
-  (define reduced-tarrows (apply set-union (set-map tarrows aux)))
-  (define grouped-tarrows (group-by (lambda (ta) (TArrow-arg ta)) reduced-tarrows))
-  (define (merge-tarrows tarrows)
-    (TArrow (TArrow-arg (first tarrows))
-            (apply set-union (map TArrow-ret tarrows))))
-  (map merge-tarrows grouped-tarrows))
-
-#;
-(define (verify-contract func contracts)
-  (define func-name (Lam-label func))
-  (define tarrows (reform-tarrows (hash-ref contracts func-name)))
-  (define (aux tarrow)
-    (define arg (TArrow-arg tarrow))
-    (define call2type (aval-infer (App func (transform arg))))
-    (define avaled-tarrow (set-first (hash-ref call2type func-name)))
-    (define avaled-returns (TArrow-ret avaled-tarrow))
-    (define given-returns (TArrow-ret tarrow))
-    (define (is-sub-returns? a-return g-returns)
-      (any identity
-           (set-map g-returns (lambda (gr)
-                                (is-sub-type? a-return gr)))))
-    (define (match-returns a-returns g-returns)
-      (begin
-        (any identity (set-map a-returns
-                               (lambda (ar) (is-sub-returns? ar g-returns))))))
-    (when (not (match-returns avaled-returns given-returns))
-      (printf "Error: contract violated: ~a\n" func-name)))
-  (for-each aux tarrows))
-
-
-#;
-(define (verify-contract func contracts)
-  (define func-name (Lam-label func))
-  (define tarrows (hash-ref contracts func-name))
-  (define (aux tarrow)
-    (define arg (TArrow-arg tarrow))
-    (define call2type (aval-infer (App func (transform arg))))
-    (define avaled-tarrow (set-first (hash-ref call2type func-name)))
-    (define avaled-returns (TArrow-ret avaled-tarrow))
-    (define given-returns (TArrow-ret tarrow))
-    (define (is-sub-returns? a-return g-returns)
-      (any identity
-           (set-map g-returns (lambda (gr)
-                                (is-sub-type? a-return gr)))))
-    (define (match-returns a-returns g-returns)
-      (begin
-        (any identity (set-map a-returns
-                               (lambda (ar) (is-sub-returns? ar g-returns))))))
-    (when (not (match-returns avaled-returns given-returns))
-      (printf "Error: contract violated: ~a\n" func-name)))
-  (set-for-each tarrows aux))
-
-
-
-> (aval-infer example2)
-id: 
-    int[1] -> int[1]
-    bool[false] -> bool[false]
-(hash
- 'id
- (set
-  (TArrow (set (IntValue 1)) (set (IntValue 1)))
-  (TArrow (set (BoolValue (False))) (set (BoolValue (False))))))
-|#
-
-
 (define (reform-tarrow-s2s tarrow-s2s)
   (define arg-tp (TArrow-arg tarrow-s2s))
   (define ret-tp (TArrow-ret tarrow-s2s))
@@ -512,10 +439,6 @@ id:
   (define (aux tarrow)
     (define arg (TArrow-arg tarrow))
     (define call2type (aval-infer (App func (transform arg))))
-
-    #;(define avaled-tarrows (apply append
-                                  (set-map (hash-ref call2type func-name)
-                                           reform-tarrow-s2s)))
     (define avaled-tarrows 
       (set-map (hash-ref call2type func-name)
                reform-tarrow-s2s))
@@ -532,25 +455,6 @@ id:
 
 
 ; TArrow Set(TArrow) symbol -> Boolean
-#;
-(define (check-contract instance contracts func-name)
-  (define arg (set-first (TArrow-arg instance)))
-  (define ret (set-first (TArrow-ret instance)))
-  ;(printf "~a ~a\n" arg ret)
-  (define arg-valid?
-    (ormap identity (flatten (for/list ([contract contracts])
-                                (for/list ([carg (set->list (TArrow-arg contract))])
-                                  (is-sub-type? arg carg))))))
-  (define ret-valid?
-    (ormap identity (flatten (for/list ([contract contracts])
-                                (for/list ([cret (set->list (TArrow-arg contract))])
-                                  (is-sub-type? ret cret))))))
-  ;(printf "~a ~a\n" arg-valid? ret-valid?)
-  (when (or (not arg-valid?)
-            (not ret-valid?))
-    (printf "Error: contract violate: ~a\n" func-name)))
-
-
 (define (check-contract instance contracts func-name)
   (define arg (TArrow-arg instance))
   (define ret (TArrow-ret instance))
@@ -569,25 +473,6 @@ id:
 ; Expr Hash ->
 (define (verify-runtime expr contracts)
   (define call2type (aval-infer expr))
-  (for ([(label arrows)
-         (in-hash call2type)])
-    (when (hash-has-key? contracts label)
-      (for ([arrow arrows])
-        (check-contract arrow (hash-ref contracts label) label)))))
-#;
-(define (verify-runtime expr contracts)
-  (define call2type (aval-infer expr))
-  (for ([(label arrows)
-         (in-hash call2type)])
-    (when (hash-has-key? contracts label)
-      (for ([arrow arrows])
-        (check-contract arrow (hash-ref contracts label) label)))))
-
-
-#;
-(define (verify-runtime expr contracts)
-  (define call2type (aval-infer expr))
-  
   (for ([(label arrows)
          (in-hash call2type)])
     (when (hash-has-key? contracts label)
