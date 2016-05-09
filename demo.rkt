@@ -4,15 +4,26 @@
 (require "structs.rkt")
 (require "parsers.rkt")
 
-; Example 1
+; Example 1-1
+; id should be (Int -> Int), but user provide (Int -> Bool)
+(define wrong-contract (define-types->hash '((: id (-> Int Bool)))))
+
+(define id (parse '{lambda id {x} x}))
+
+;(verify-contract id wrong-contract) ;reject
+
+;============================================
+#|
+; Example 1-2
 ; id should be (Int -> Int), but user provide (Int -> Bool)
 (define wrong-contract (define-types->hash '((: id (-> Int Bool)))))
 
 (define id (parse '{lambda id {x} x}))
 
 (verify-contract id wrong-contract) ;reject
-
+|#
 ;============================================
+
 
 ; Example2: check runtime type without predicate
 ; id: int -> int
@@ -27,8 +38,8 @@
                              {let {{fls {id false}}}
                                one}}}))
 
-(verify-runtime example2 contract2)       ; reject
-(verify-runtime example2 contract2-bool)  ; accept
+;(verify-runtime example2 contract2)       ; reject
+;(verify-runtime example2 contract2-bool)  ; accept
 
 ;============================================
 
