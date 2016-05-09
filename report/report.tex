@@ -9,7 +9,8 @@
 \usepackage[english]{babel} % English language/hyphenation
 \usepackage{amsmath,amsfonts,amsthm} % Math packages
 
-\usepackage{lipsum} % Used for inserting dummy 'Lorem ipsum' text into the template
+\usepackage{indentfirst} 
+\usepackage{listings}
 
 \usepackage{sectsty} % Allows customizing section commands
 \allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
@@ -54,9 +55,45 @@
 
 \section{Introduction}
 
+This project presents a method to verify contract of functions in dynamic typing programming languages via abstract interpretation. \\
+
+\textbf{Motivation}
+
+Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checkings are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
+
+But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For examples, in the following Scheme program, the function \texttt{add1} executes a simple arithmic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
+
+\lstset{language=Lisp}
+\begin{lstlisting}[frame=single]
+(define (add1 x) (+ x 1)) ;Defining a function
+(add1 3)                  ;OK
+(add1 "3")                ;Error
+\end{lstlisting} 
+
+Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programers can write contract for function, then the language's contract system will check the argument and returned value is satified these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then if satifies the contract, otherwise the contract system will blame somewhere violates the contract.
+
+Contract provide a way to describe refined behavior of a function, and programmers can utilize contract system and write test cases to syntatically cover the program to find bugs early, but the drawback is it may involve additional performance cost in runtime because contract checking happends on each function application.
+
+The motivation of our project is we don't want to loose the advantages of dynamic typing, but we also want to write correct programs and catch errors as early as possible, for example, before running the program.
+
+\textbf{Approach}
+
+Our approach is based on abstractig abstract machine(TODO: REF).
+
+At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type(TODO: REF). It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch erros before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
+
 %----------------------------------------------------------------------------------------
 
 \section{Abstracting Abstract Machine}
+
+%------------------------------------------------
+\subsection{Abstract Interpretation}
+
+%------------------------------------------------
+
+\subsection{The Language}
+
+We constract an abstract interpreter for a small language which is in A-Normal Form. A-Normal Form usually used as an intermediate representation of program in compiler.
 
 %------------------------------------------------
 
@@ -66,10 +103,6 @@
 
 \subsection{Abstracting CESK Machine}
 
-%------------------------------------------------
-
-\subsection{The Language}
-
 %----------------------------------------------------------------------------------------
 
 \section{Verifying Contracts}
@@ -78,11 +111,24 @@
 
 \section{Implementation}
 
+To verify our approach, we implemented a prototype verifier for ANF in Racket language.
+
+\subsection{AAM}
+Store widening.
+
+\subsection{Contract}
+
+%----------------------------------------------------------------------------------------
+
+\section{Examples}
+
 %----------------------------------------------------------------------------------------
 
 \section{Related Work}
 
 %----------------------------------------------------------------------------------------
+
+\section{Future Work}
 
 \section{Conclusion}
 
