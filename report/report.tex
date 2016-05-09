@@ -11,6 +11,7 @@
 
 \usepackage{indentfirst} 
 \usepackage{listings}
+\usepackage{syntax}
 
 \usepackage{sectsty} % Allows customizing section commands
 \allsectionsfont{\centering \normalfont\scshape} % Make all sections centered, the default font and small caps
@@ -61,16 +62,20 @@ This project presents a method to verify contract of functions in dynamic typing
 
 Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checkings are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
 
-But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For examples, in the following Scheme program, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
+But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For example, as Figure \ref{fig1} shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
 
+\begin{figure}[h!]
 \lstset{language=Lisp}
 \begin{lstlisting}[frame=single]
 (define (add1 x) (+ x 1)) ;Defining a function
 (add1 3)                  ;OK
 (add1 "3")                ;Error
 \end{lstlisting} 
+\caption{A Scheme example}
+\label{fig1}
+\end{figure}
 
-Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programers can write contract for function, then the language's contract system will check the argument and returned value is satified these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
+Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satified these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
 
 Contract provides a way to describe refined behavior of a function, and programmers can utilize contract system and write test cases to syntatically cover the program to find bugs early, but the drawback is it may involve additional performance cost in runtime because contract checking happends on each function application.
 
@@ -100,11 +105,59 @@ At last, I would like to explain the reason why we change the project name. At t
 
 \subsection{The Language}
 
-We construct an abstract interpreter for a small language which is in A-Normal Form(TODO: REF). A-Normal Form usually used as an intermediate representation of program in compiler, 
+We construct an small-step abstract interpreter for a small language which is a variant of call-by-value \textit{A-Normal Form}(TODO: REF). Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form(TODO: REF).
+
+The Figure \ref{fig2} shows the syntax of our tiny language in BNF.
+
+\begin{figure}[h!]
+\setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
+\begin{grammar}
+<var> ::= <symbol>
+
+<label> ::= <symbol>
+
+<integer> ::= $\cdots$ | \texttt{-1} | \texttt{0} | \texttt{1} | $\cdots$
+
+<boolean> ::= \texttt{true} | \texttt{false}
+
+<lambda> ::= (\texttt{lambda} [<label>] (<var>) <exp>)
+
+<aexp> ::= <lambda>
+\alt <var>
+\alt <integer>
+\alt <boolean>
+\alt (<prim> <aexp>*)
+
+<cexp> ::= (<aexp> <aexp>)
+\alt (\texttt{if} <aexp> <exp> <exp>)
+\alt (\texttt{letrec} ((<var> <aexp>)) <exp>)
+
+<exp> ::= <aexp>
+\alt <cexp>
+\alt (\texttt{let} ((<var> <exp>)) <exp>)
+
+<prim> ::= \texttt{+} | \texttt{-} | \texttt{*} | \texttt{=} | \texttt{and} | \texttt{or} | \texttt{not}
+\end{grammar}
+\caption{Syntax of ANF}
+\label{fig2}
+\end{figure}
+
+Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>} is optional and mainly used for debugging. And the language has two primitive data types: integer and boolean, as well as primitive operations on these data type are provided. ANF has three kind of expressions:
+
+\begin{itemize}
+\item Atomic expressions (\textit{<aexp>}) include primitive values, functions, and operations on prmitive values. Evaluating these expressions are all trivial, that is immediately and always terminate, and no side effect.
+
+\item Complex expressions (\textit{<cexp>}) are function applications, \texttt{if} expression and \texttt{letrec} expression. A notable thing is the operand and operator of an application must be an atomic expression, and as well as the condition of \texttt{if} expression and the right hand side of \texttt{lecrec} binding. Complex expression may not terminate, for example, an infinite recursive application.
+
+\item Expressions (\textit{<exp>}) are either atomic expression, complex expression or a \texttt{let} expression. Unlike \texttt{letrec}, the right hand side of \texttt{let} binding can be a <exp>, so all non-trivial expressions must be bound by a \texttt{let} expression.
+\end{itemize}
 
 %------------------------------------------------
 
 \subsection{CESK Machine}
+
+This section we will introduce the CESK Machine(TODO: REF) and its concrete semantics for ANF.
 
 %------------------------------------------------
 
