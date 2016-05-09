@@ -7,6 +7,27 @@
 
 (provide parse
          define-types->hash)
+#;
+(define (define-types->hash t-defs)
+  (define (merge-define-types define-types)
+    (define (aux dt lst)
+      (define dname (DefineType-name dt))
+      (define dtype (DefineType-type dt))
+      (define exist-type (assoc dname lst))
+      (define dtypes (if exist-type
+                         (set-add (cdr exist-type) dtype)
+                         (set dtype)))
+      (define idx (list-index (curry equal? exist-type) lst))
+      (if idx
+          (list-set lst idx (cons dname dtypes))
+          (cons (cons dname dtypes) lst)))
+    (foldl aux
+           '()
+           define-types))
+  (define h (make-hash (merge-define-types (map parse-type-def t-defs))))
+  (for/hash ([k (hash-keys h)])
+            (values k (hash-ref h k))))
+
 
 (define (define-types->hash t-defs)
   (define (merge-define-types define-types)
@@ -26,13 +47,11 @@
            define-types))
   (define h (make-hash (merge-define-types (map parse-type-def t-defs))))
   (for/hash ([k (hash-keys h)])
-            (let* ([val (hash-ref h k)]
-                   [len (length (set->list val))])
-              (values k (if (= len 1)
-                            (set (set-first val))
-                            ;(TIs val)
-                            val)))))
+            (values k (hash-ref h k))))
 
+
+
+#;
 (define (parse-type-def tdef)
   (define (parse-type exp)
     (match exp
@@ -55,6 +74,41 @@
          (TArrow fit fot))]
       [`(Int ,pred) (pred-preprocess (IntValue (parse-pred pred)))]
       [`(Bool ,pred) (BoolValue (parse-pred pred))]))
+  (match tdef
+    [`(: ,name ,type) (DefineType name (parse-type type))]
+    [_ (error 'parse-type-def "not a type definition")]))
+
+
+
+(define (parse-type-def tdef)
+  (define (parse-type exp)
+    (match exp
+      [(? integer?) (pred-preprocess (IntValue exp))]
+      ['Int (pred-preprocess (IntValue #t))]
+      ['Bool (BoolValue #t)]
+      ['Any (TAny)]
+      ['_ (PSelf)]
+      ['true (BoolValue (True))]
+      ['false (BoolValue (False))]
+      [`(-> ,in-type ,out-type)
+       (let* ([it (parse-type in-type)]
+              [ot (parse-type out-type)]
+              [fit (if (list? it)
+                       (list->set (flatten it))
+                       (set it))]
+              [fot (if (list? ot)
+                       (list->set (flatten ot))
+                       (set ot))]
+              #;[fit (if (set? it)
+                       it
+                       (set it))]
+              #;[fot (if (set? ot)
+                       ot
+                       (set ot))])
+         (TArrow fit fot))]
+      [`(Int ,pred) (pred-preprocess (IntValue (parse-pred pred)))]
+      [`(Bool ,pred) (BoolValue (parse-pred pred))]
+      [`(or ,t ...) (flatten (map parse-type t))]))
   (match tdef
     [`(: ,name ,type) (DefineType name (parse-type type))]
     [_ (error 'parse-type-def "not a type definition")]))
@@ -110,6 +164,7 @@
     [`(letrec ((,lhs ,rhs)) ,body) (Letrec lhs (parse rhs) (parse body))]
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
+
 #|
 (define (parse exp)
   (match exp
@@ -164,6 +219,8 @@
                          (set (TArrow (set (IntValue 3))
                                       (set (IntValue (PAnd (PGreater (PSelf) 1)
                                                            (PGreater +inf.f (PSelf)))))))))
+
+  hh
   )
 
 
