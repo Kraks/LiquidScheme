@@ -29,6 +29,16 @@
             (values k (hash-ref h k))))
 
 
+(define (reform-definetype deftp)
+  (define deftp-name (DefineType-name deftp))
+  (define deftp-type (DefineType-type deftp))
+  (define ta-arg (TArrow-arg deftp-type))
+  (define ta-ret (TArrow-ret deftp-type))
+  (set-map ta-arg
+           (lambda (arg)
+             (DefineType deftp-name
+                         (TArrow arg ta-ret)))))
+
 (define (define-types->hash t-defs)
   (define (merge-define-types define-types)
     (define (aux dt lst)
@@ -45,10 +55,9 @@
     (foldl aux
            '()
            define-types))
-  (define h (make-hash (merge-define-types (map parse-type-def t-defs))))
+  (define h (make-hash (merge-define-types (append-map (compose reform-definetype parse-type-def) t-defs))))
   (for/hash ([k (hash-keys h)])
             (values k (hash-ref h k))))
-
 
 
 #;
@@ -197,6 +206,7 @@
 ; below:  pred-processing preds
 
 ;; TESTS
+#;
 (module+ test
   (define h (define-types->hash
               '((: a (-> Int Int))

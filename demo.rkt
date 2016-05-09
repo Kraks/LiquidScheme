@@ -10,7 +10,7 @@
 
 (define id (parse '{lambda id {x} x}))
 
-(verify-contract id wrong-contract) ;reject
+;(verify-contract id wrong-contract) ;reject
 
 ;============================================
 #|
@@ -38,8 +38,8 @@
                              {let {{fls {id false}}}
                                one}}}))
 
-(verify-runtime example2 contract2)       ; reject
-(verify-runtime example2 contract2-bool)  ; accept
+;(verify-runtime example2 contract2)       ; reject
+;(verify-runtime example2 contract2-bool)  ; accept
 
 ;============================================
 
