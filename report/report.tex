@@ -179,14 +179,14 @@ a \in Addr & ~ \mbox{is an infinite set of addresses}
 \label{fig:concretecesk}
 \end{figure}
 
-The CESK machine is a state transition based machine.  TODO
+The CESK machine is a state transition based machine. The execution of program is a procedure that explores the state graph, if all the state we have already seen, then the execution terminates. Note: since for now it is a concrete machine, so the state space is infinite.
 
 Firstly we define an inject function to form the initial state by inserting the initial expression into a state with an empty environment, an empty store and a \texttt{Halt} continuation.
 
 $$ \mathcal{I} : Exp \rightarrow \Sigma $$
 $$ \mathcal{I}(exp) = \langle exp, [], [], \texttt{Halt} \rangle $$
 
-Next we define the state transition relations of CESK machine for ANF lambda calculus. \\
+Next we define the state transition relations $(\longmapsto_{CESK}) \subseteq \Sigma \times \Sigma$ that maps a state to another state. \\
 
 \textbf{Atomic Expression}\\
 If the current expression is an atomic expression, which means the expression is either primitive values, functions, or operation on primitive values, and we can evaluate it directly.
@@ -258,15 +258,25 @@ $$ \langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa \rangle \long
 
 \subsection{Abstracting CESK* Machine}
 
-In this section, we will derive a non-deterministic abstracting CESK* machine for performing \textit{k}-CFA-like analysis(TODO: REF).
+In this section, we will derive a non-deterministic abstracting CESK* machine for performing \textit{k}-CFA-like analysis(TODO: REF). There are several changes compared with concrete CESK machine: 
+
+\begin{itemize}
+\item the continuation is store-allocated for eliminating recursive sturcture in state space
+\item the addresses are abstract, and it is an finite set; we will have two kinds of address \texttt{BindAddr} and \texttt{ContAddr} representing binding address and continuation address respectively
+\item all values are abstract value, namely a type tag with a set of predicates, which will be discussed in Section 3
+\item store is a mapping from address to a set of abstract values $\mathcal{P}$, the set represents all possible values for this address
+\item the state includes a \textit{time} component, which encodes the execution contexts
+\end{itemize}
+
+Figure \ref{fig:abstractcesk} shows the state space of abstracting CESK* machine. Notation: we use hat to denote it's an abstract component, for example $\widehat{Env}$ is abstract environment.
 
 \begin{figure}[h!]
 \begin{align*}
 \varsigma \in \widehat{\Sigma} & = Exp \times \widehat{Env} \times \widehat{Store} \times \widehat{Cont} \times Time \\
 \rho \in \widehat{Env} & = Var \rightarrow \widehat{Addr} \\
-\sigma \in \widehat{Store} & = \widehat{Addr} \rightarrow D \\
+\sigma \in \widehat{Store} & = \widehat{Addr} \rightarrow \mathcal{P}(D) \\
 \kappa \in Cont & = \texttt{Halt} ~|~ \texttt{LetK}(v,e,\rho,\kappa) \\
-Addr & = BindAddr + ContAddr \\
+a \in \widehat{Addr} & = BindAddr + ContAddr \\
 BindAddr &= Var \times Time \\
 ContAddr &= Exp \times Time \\
 d \in D & = \widehat{Clo} + \widehat{Integer} + \widehat{Boolean} \\
@@ -275,16 +285,6 @@ clo \in \widehat{Clo} & = Lam \times \widehat{Env}
 \caption{Abstract CESK* state space}
 \label{fig:abstractcesk}
 \end{figure}
-
-store-allocated cont, eliminate recursive structure in state space
-
-storable, set of D
-
-abstract value
-
-abstract state
-
-store-allocated continuation
 
 \subsection{Record Types of Function Application}
 
