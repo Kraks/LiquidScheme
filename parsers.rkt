@@ -57,12 +57,6 @@
                        (set it))]
               [fot (if (list? ot)
                        (list->set (flatten ot))
-                       (set ot))]
-              #;[fit (if (set? it)
-                       it
-                       (set it))]
-              #;[fot (if (set? ot)
-                       ot
                        (set ot))])
          (TArrow fit fot))]
       [`(Int ,pred) (pred-preprocess (IntValue (parse-pred pred)))]
