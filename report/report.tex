@@ -274,9 +274,9 @@ Contracts give strong guarantees about the interaction of components, while keep
 
 To solve theses two issues, we do static verfication with contracts for dynamic languages. Verify dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
 
-Why execute programs on contracts (abstract values) can help us to do the verification? This idea is easy to understand: contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
+Why execute programs on contracts (abstract values) can help us do the verification? Actually, contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
 
-\subsection{The Sub-Language of Contract}
+\subsection{The Syntax of Contract}
 The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
 
 
@@ -305,7 +305,7 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 
 <var> ::= <symbol>
 \end{grammar}
-\caption{Syntax of ANF}
+\caption{Syntax of Contract}
 \label{figc}
 \end{figure}
 
@@ -318,13 +318,20 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \end{itemize}
 
 
-\subsection{Operation on Predicate/Contract/Spec}
-For our current work, users only provide the contracts for function definition, and our program will interpret all codes with the provided contracts as inputs.
+\subsection{Operation on Contracts (Abstract Values)}
+For our current work, users only provide the contracts for user defined functions, and our program will abstractly interpret all codes with the provided contracts as input abstract values.
+We know the interpretation process is actually defined by a function $\delta$ that maps an operation and its input argument values to the output value. This is true no matter the input argument values are concrete or abstract. There is no essential differece and boundary between concrete and abstract interpretation. We can choose a level of abstraction, and consider one interpretation as abstract interpretation when its level of abstraction is higher than the one we choose. However, once we decide what level of abstraction is concrete interpretation, from the output values we can differentiate the non-abstract and abstract interpretation: when there are valid input values, non-abstract interpretation has a unique answer, while the output of abstract interpretation is a set of answers. The means the abstract interpretation reduces an operation nondeterministically. e.g. $\delta(sub1, 1) = 1$, $\delta\hat{}(sub1, 1) = \{Int\}$ , $\delta\hat{}(even?, \bullet) = {true, false}$. $\delta$ represents concrete interpretation, and $\delta\hat{}$ represents abstract interpretation. Here I use $\bullet$ to represent a value we no nothing about it.
+We will use two example to illustrate how to operate on contract:
+\begin{itemize}
+\item Suppose in one step we want to get the contract of $(+ x y)$, and we know that the contract of $x$ is \texttt{(Int\ (\textless\ \underscore\ 3))} and the contract of $y$ is \texttt{(Int\ (\textless\ \underscore\ 4))} and the result of abstract interpretation is a value with the contract of \texttt{(Int\ (\textless\ \underscore\ 7))}.
 
+\item Cases with conditionals, when we don't know the exact value of the input condition, is a little more complicated. The result contract of $(if \bullet x y)$. Assume the same contracts for $x$ and $y$ as above, the result contract is \{\texttt{(Int\ (\textless\ \underscore\ 3))}, \texttt{(Int\ (\textless\ \underscore\ 4))}\}.
 
-
+\end{itemize}
+ 
 
 \subsection{Checking Contract}
+
 
 %----------------------------------------------------------------------------------------
 
