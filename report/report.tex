@@ -319,6 +319,8 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \item ``_'' represents the self value which is described by the current contract. For instance, this contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and it's less than 3.
 
 \item If the predicate part of a contract is ``\#t'', it means this value can be any concrete value of this given type.
+
+\item You can write multiple contracts for one function.
 \end{itemize}
 
 
@@ -334,7 +336,27 @@ We will use two example to illustrate how to operate on contract:
 \end{itemize}
  
 
-\subsection{Checking Contract}
+\subsection{Check Contracts}
+%% number this
+We have two parts for checking contracts:
+\begin{itemize}
+\item Verify the user provided contracts and user defined functions are conpatible. e.g.: assume a given contract is\texttt{(:\ id\ (->\ Int\ Bool))} and a given function is \texttt{(lambda\ id\ \(x\)\ x)}, this function will be rejected.
+
+\item Verify the use of the defined functions are compatible with the contracts. e.g.: assume a given function $id$, its definition is the same as that in the item above. For a dynamic typing language without any limitation, from this definition, we can say $id$ is polymorphism with input and output have the same type (and value). Let's apply it:\\
+\begin{figure}[h!]
+\lstset{language=Lisp}
+\begin{lstlisting}[frame=single]
+{let {{id {lambda id {x} x}}}
+  {let {{one {id 1}}}
+    {let {{fls {id false}}}
+      one}}}
+\end{lstlisting} 
+\caption{A Scheme example}
+\label{fig:id}
+\end{figure}
+
+Consider two cases: 1) The given contract is \texttt{(:\ id\ (->\ Int\ Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(:\ id\ (->\ Int\ Int))} and \texttt{(:\ id\ (->\ Bool\ Bool))}. The code will be accepted. 
+\end{itemize}
 
 
 %----------------------------------------------------------------------------------------
