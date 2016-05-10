@@ -344,12 +344,12 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
 \begin{grammar}
-<contract-type> ::= Int | Bool | Any | (-> <contract-type> <contract-type>)
-\alt (Int <predicate>) | (Bool <predicate>) | (Any \#t)
+<contract-type> ::= \texttt{Int} | \texttt{Bool} | \texttt{Any} | \texttt{($\rightarrow$} <contract-type> <contract-type>\texttt{)}
+\alt \texttt{(Int} <predicate> \texttt{)} | \texttt{(Bool} <predicate> \texttt{)} | \texttt{(Any \#t)}
 
-<predicate> ::= \texttt{\#t} | (<pred-op> <operand> <operand>)
+<predicate> ::= \texttt{\#t} | \texttt{(}<pred-op> <operand> <operand> \texttt{)}
 
-<pred-op> ::= \textless | \textgreater | $\leq$ | $\geq$ | \texttt{=}
+<pred-op> ::= \texttt{\textless} | \texttt{\textgreater} | \texttt{$\leq$} | \texttt{$\geq$} | \texttt{=}
 \alt \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
 
 <operand> ::= <predicate> | <literal> | <self> | <var>
@@ -361,7 +361,7 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 
 <boolean> ::= \texttt{true} | \texttt{false}
 
-<self> ::= _
+<self> ::= \texttt{_}
 
 <var> ::= <symbol>
 \end{grammar}
@@ -370,11 +370,13 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \end{figure}
 
 \begin{itemize}
-\item ``Any'' means this contract type is unknown.
+\item \texttt{Any} means this contract type is unknown.
 
-\item ``_'' represents the self value which is described by the current contract. For instance, this contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and it's less than 3.
+\item \texttt{_} represents the self value which is described by the current contract. For instance, this contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and it's less than 3.
 
-\item If the predicate part of a contract is ``\#t'', it means this value can be any concrete value of this given type.
+\item If the predicate part of a contract is \texttt{\#t}, it means this value can be any concrete value of this given type.
+
+\item You can write multiple contracts for one function.
 \end{itemize}
 
 
@@ -390,7 +392,21 @@ We will use two example to illustrate how to operate on contract:
 \end{itemize}
  
 
-\subsection{Checking Contract}
+\subsection{Check Contracts}
+%% number this
+We have two parts for checking contracts:
+\begin{itemize}
+\item Verify the user provided contracts and user defined functions are conpatible. e.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
+
+\item Verify the use of the defined functions are compatible with the contracts. e.g.: assume a given function \texttt{id}, its definition is the same as that in the item above. For a dynamic typing language without any limitation, from this definition, we can say \texttt{id} is polymorphism with input and output have the same type (and value). Let's apply it:
+\begin{verbatim}
+                  (let ((id (lambda id (x) x)))
+                    (let ((one (id 1)))
+                      (let ((fls (id false)))
+                        one)))
+\end{verbatim}
+Consider two cases: 1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
+\end{itemize}
 
 
 %----------------------------------------------------------------------------------------
