@@ -255,10 +255,8 @@
                                        (PGreater (PSelf) 2))))))
 )
 
-;; ###33###
 (define pred-preprocess
-  (compose list->set
-           (curry map IntValue)
+  (compose (curry map IntValue)
            (curry map (compose reduce IntValue-pred))
            (curry filter is-valid-pred?)
            (curry map reorder-pand)

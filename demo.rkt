@@ -4,7 +4,7 @@
 (require "structs.rkt")
 (require "parsers.rkt")
 
-; Example 1
+; Example 1-1
 ; id should be (Int -> Int), but user provide (Int -> Bool)
 (define wrong-contract (define-types->hash '((: id (-> Int Bool)))))
 
