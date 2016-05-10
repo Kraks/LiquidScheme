@@ -27,7 +27,7 @@ abs:
          verify-runtime)
 
 #|
- lam ::= (λ (var) exp)
+ lam ::= (λ <label> (<var>) <exp>)
 
  aexp ::= lam
        |  var

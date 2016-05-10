@@ -5,7 +5,7 @@
 \documentclass[paper=a4, fontsize=11pt]{scrartcl} % A4 paper and 11pt font size
 
 \usepackage[T1]{fontenc} % Use 8-bit encoding that has 256 glyphs
-\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
+%\usepackage{fourier} % Use the Adobe Utopia font for the document - comment this line to return to the LaTeX default
 \usepackage[english]{babel} % English language/hyphenation
 \usepackage{amsmath,amsfonts,amsthm} % Math packages
 
@@ -87,9 +87,11 @@ Our approach is based on abstracting abstract machine(TODO: REF), which is a tec
 
 The key idea of our approach is regarding predicate (i.e. the contract) as abstract value. A predicate is an approximation of a value, it descirbes the bound of the value. We build an non-deterministic abstract interpreter that do computations on these abstract values, the term \textit{non-deterministic} means it will explore every possible behaviors of program's runtime. The abstract interpretation is sound, which means if the input of abstract interpretation is a sound approximation of concrete value, it's guaranteed that the result of abstract interpretation is still a sound approximation of returned concrete value. So that we could leverage abstract interpretation to check the behaviors of a function that depicted by contracts.
 
-Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics of our abstracting abstract machine.
+Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK Machine.
 
-Section 3 TODO. \\
+Section 3 TODO. 
+Section 4 TODO.
+Section 5 TODO. \\
 
 At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type(TODO: REF). It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch erros before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
 
@@ -105,9 +107,9 @@ At last, I would like to explain the reason why we change the project name. At t
 
 \subsection{The Language}
 
-We construct an small-step abstract interpreter for a small language which is a variant of call-by-value \textit{A-Normal Form}(TODO: REF). Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form(TODO: REF).
+Our small-step abstract interpreter use a small language which is a variant of call-by-value \textit{A-Normal Form} lambda calculus(TODO: REF). Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form(TODO: REF).
 
-The Figure \ref{fig2} shows the syntax of our tiny language in BNF.
+The Figure \ref{fig2} shows the syntax of our tiny language.
 
 \begin{figure}[h!]
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
@@ -157,11 +159,65 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 \subsection{CESK Machine}
 
-This section we will introduce the CESK Machine(TODO: REF) and its concrete semantics for ANF.
+This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for ANF.
+
+CESK Machine as an abstract machine, is a formally defined tool for descirbing operational semantics of programming langauge. As we can see from its name, CESK Machine has four components that compose a \textit{state} of its exectuion: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
+
+Figure \ref{fig3} shows the concrete CESK state space.
+
+\begin{figure}[h!]
+\begin{align*}
+\varsigma \in \Sigma & = Exp \times Env \times Store \times Cont \\
+\rho \in Env & = Var \rightarrow Addr \\
+\sigma \in Store & = Addr \rightarrow D \\
+\kappa \in Cont & = \texttt{Halt} ~|~ \texttt{LetK}(v,e,\rho,\kappa) \\
+d \in D & = Clo + Integer + Boolean \\
+clo \in Clo & = Lam \times Env \\
+a \in Addr & ~ \mbox{is an infinite set of addresses}
+\end{align*}
+\caption{Concrete CESK state space}
+\label{fig3}
+\end{figure}
+
+The CESK Machine is a state transition based machine.  TODO
+
+Firstly we define an inject function to form the initial state by inserting the initial expression into a state with an empty environment, an empty store and a \texttt{Halt} continuation.
+
+$$ \mathcal{I} : Exp \rightarrow \Sigma $$
+$$ \mathcal{I}(exp) = (exp, [], [], \texttt{Halt}) $$
+
+Next we define the state transition relations of CESK Machine for ANF lambda calculus.
+
+\textbf{Atomic Expression}\\
+If the current expression is an atomic expression, which means the expression is either primitive values, functions, or operation on primitive values, and we can evaluate it directly.
+
+$$ \langle aexp, \rho, \sigma, \kappa \rangle \longmapsto_{CESK} \langle \mathcal{A}(aexp, \rho, \sigma), \rho, \sigma, \kappa \rangle $$
+
+where $\mathcal{A}$ is an auxiliary function to evaluate atomic expression and defined as follow:
+\begin{align*}
+\mathcal{A} : AExp \times Env & \times Store \rightarrow D \\
+\mathcal{A}(v, \rho, \sigma) & = \sigma(\rho(v)) \\
+\mathcal{A}(z, \rho, \sigma) & = z \\
+\mathcal{A}(\texttt{true}, \rho, \sigma) & = \texttt{true} \\
+\mathcal{A}(\texttt{false}, \rho, \sigma) & = \texttt{false} \\
+\mathcal{A}(lam, \rho, \sigma) & = clo(lam, \rho)  \\
+\mathcal{A}((prim, aexp_0, \cdots aexp_i), \rho, \sigma) & = \mathcal{O}(prim)(\mathcal{A}(aexp_0, \rho, \sigma), \cdots \mathcal{A}(aexp_i, \rho, \sigma))
+\end{align*}
+
+where the $\mathcal{O} : Prim \rightarrow (Value^* \rightarrow Value)$ operater is a curry function that maps a name of primitive operation to its actual operation.\\
+
+\textbf{Function Application}\\
+\texttt{let} \textbf{Expression}\\
+\texttt{letrec} \textbf{Expression}\\
+\texttt{if} \textbf{Expression}\\
 
 %------------------------------------------------
 
 \subsection{Abstracting CESK Machine}
+
+In this section, we will derive a non-deterministic CESK Machine for abstract interpretation.
+
+\subsection{Record Types of Function Application}
 
 %----------------------------------------------------------------------------------------
 
