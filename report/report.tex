@@ -281,21 +281,20 @@ To solve theses two issues, we do static verfication with contracts for dynamic 
 Why execute programs on contracts (abstract values) can help us to do the verification? This idea is easy to understand: contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
 
 \subsection{The Sub-Language of Contract}
-The Figure \ref{fig3} shows the syntax of our tiny sub-language of contract in BNF.
+The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
+
 
 \begin{figure}[h!]
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
 \begin{grammar}
-
-<contract-type> ::= Int | Bool | Any
-\alt (-> <contract-type> <contract-type>)
+<contract-type> ::= Int | Bool | Any | (-> <contract-type> <contract-type>)
 \alt (Int <predicate>) | (Bool <predicate>) | (Any \#t)
 
 <predicate> ::= \texttt{\#t} | (<pred-op> <operand> <operand>)
 
-<pred-op> ::= \textless | \textgreater | $\leq$ | $\geq$
-\alt \texttt{=} | \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
+<pred-op> ::= \textless | \textgreater | $\leq$ | $\geq$ | \texttt{=}
+\alt \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
 
 <operand> ::= <predicate> | <literal> | <self> | <var>
 
@@ -311,9 +310,8 @@ The Figure \ref{fig3} shows the syntax of our tiny sub-language of contract in B
 <var> ::= <symbol>
 \end{grammar}
 \caption{Syntax of ANF}
-\label{fig3}
+\label{figc}
 \end{figure}
-
 
 \begin{itemize}
 \item ``Any'' means this contract type is unknown.
