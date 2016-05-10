@@ -99,9 +99,7 @@ At last, I would like to explain the reason why we change the project name. At t
 
 \section{Abstracting Abstract Machine}
 
-%------------------------------------------------
-
-\subsection{Abstract Interpretation}
+In this section, we discuss the syntax and semantics of our core language. To formally describe the concrete and abstract semantics, we use CESK machine as execution model, and present the concrete CESK machine and abstract CESK machine, respectively. Finally, we show a special continuation of abstract CESK machine to trace the argument and returned value of function application, this information will be used in contract checking.
 
 %------------------------------------------------
 
@@ -159,7 +157,7 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 \subsection{CESK Machine}
 
-This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for ANF.
+This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for our core language.
 
 CESK machine as an abstract machine, is a formally defined tool for describing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its execution: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
 
@@ -211,9 +209,9 @@ For function application, since the A-Normal Form already required the operator 
 $$ \langle (aexp_0~aexp_1), \rho, \sigma, \kappa \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
 where 
 \begin{align*}
-clo((\lambda~(v)~body), \rho') & = \mathcal{A}(aexp_0) \\
+clo((\lambda~(v)~body), \rho') & = \mathcal{A}(aexp_0, \rho, \sigma) \\
 \rho'' & = \rho'[v \rightarrow a] \\
-\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1)]
+\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1, \rho, \sigma)]
 \end{align*}
 
 \texttt{let} \textbf{Expression}\\
@@ -256,37 +254,65 @@ $$ \langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa \rangle \long
 
 %------------------------------------------------
 
-\subsection{Abstracting CESK* Machine}
+\subsection{Abstracting CESK Machine}
 
-In this section, we will derive a non-deterministic abstracting CESK* machine for performing \textit{k}-CFA-like analysis(TODO: REF). There are several changes compared with concrete CESK machine: 
+In this section, we will derive a non-deterministic abstracting CESK machine for performing \textit{k}-CFA-like analysis(TODO: REF). There are several changes compared with concrete CESK machine: 
 
 \begin{itemize}
 \item the continuation is store-allocated for eliminating recursive sturcture in state space
 \item the addresses are abstract, and it is an finite set; we will have two kinds of address \texttt{BindAddr} and \texttt{ContAddr} representing binding address and continuation address respectively
 \item all values are abstract value, namely a type tag with a set of predicates, which will be discussed in Section 3
 \item store is a mapping from address to a set of abstract values $\mathcal{P}$, the set represents all possible values for this address
-\item the state includes a \textit{time} component, which encodes the execution contexts
+\item the state includes a \textit{time} component, which encodes the execution contexts, practically it is a list of call string history.
 \end{itemize}
 
-Figure \ref{fig:abstractcesk} shows the state space of abstracting CESK* machine. Notation: we use hat to denote it's an abstract component, for example $\widehat{Env}$ is abstract environment.
+Figure \ref{fig:abstractcesk} shows the state space of abstracting CESK machine. Notation: we use a hat on term to denote it's an abstract component, for example, $\widehat{Env}$ is abstract environment.
 
 \begin{figure}[h!]
 \begin{align*}
 \varsigma \in \widehat{\Sigma} & = Exp \times \widehat{Env} \times \widehat{Store} \times \widehat{Cont} \times Time \\
 \rho \in \widehat{Env} & = Var \rightarrow \widehat{Addr} \\
-\sigma \in \widehat{Store} & = \widehat{Addr} \rightarrow \mathcal{P}(D) \\
+\sigma \in \widehat{Store} & = \widehat{Addr} \rightarrow \mathcal{P}(\hat{D}) \\
 \kappa \in Cont & = \texttt{Halt} ~|~ \texttt{LetK}(v,e,\rho,\kappa) \\
 a \in \widehat{Addr} & = BindAddr + ContAddr \\
 BindAddr &= Var \times Time \\
 ContAddr &= Exp \times Time \\
-d \in D & = \widehat{Clo} + \widehat{Integer} + \widehat{Boolean} \\
+d \in \hat{D} & = \widehat{Clo} + \widehat{Integer} + \widehat{Boolean} \\
 clo \in \widehat{Clo} & = Lam \times \widehat{Env}
 \end{align*}
-\caption{Abstract CESK* state space}
+\caption{Abstract CESK state space}
 \label{fig:abstractcesk}
 \end{figure}
 
-\subsection{Record Types of Function Application}
+We also use an injection function to construct initial abstract state:
+
+$$ \mathcal{I} : Exp \rightarrow \widehat{\Sigma} $$
+$$ \mathcal{I}(exp) = \langle exp, [], [], \texttt{Halt}, [] \rangle $$
+
+Unlike the concrete CESK machine, the transition function in abstract CESK machine is from a state to a set of states:
+
+$$(\longmapsto_{\widehat{CESK}}) \subseteq \Sigma \times \Sigma^{*}$$
+
+Since in abstract CESK machine the store maps an address to a set of abstract value, so the $\mathcal{A}$ will also returns a set of abstract value $\mathcal{P}(\hat{D})$. 
+$$ \mathcal{A} : AExp \times Env \times Store \rightarrow \mathcal{P}(\hat{D}) $$
+The detail of computation on abstract values will be discussed in Section 3.
+
+$$
+\langle aexp, \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} \langle v, \rho, \sigma, \kappa, t' \rangle \text{ where } v \in \mathcal{A}(aexp, \rho, \sigma)
+$$
+
+$$ \langle (aexp_0~aexp_1), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} \langle body, \rho'', \sigma', \kappa, t' \rangle $$
+where 
+\begin{align*}
+clo((\lambda~(v)~body), \rho') & \in \mathcal{A}(aexp_0, \rho, \sigma) \\
+\rho'' & = \rho'[v \rightarrow a] \\
+\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1)]
+\end{align*}
+
+
+
+
+\subsection{Tracing Types of Application}
 
 %----------------------------------------------------------------------------------------
 
