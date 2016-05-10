@@ -260,6 +260,28 @@ $$ \langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa \rangle \long
 
 In this section, we will derive a non-deterministic abstracting CESK* machine for performing \textit{k}-CFA-like analysis(TODO: REF).
 
+\begin{figure}[h!]
+\begin{align*}
+\varsigma \in \widehat{\Sigma} & = Exp \times \widehat{Env} \times \widehat{Store} \times \widehat{Cont} \times Time \\
+\rho \in \widehat{Env} & = Var \rightarrow \widehat{Addr} \\
+\sigma \in \widehat{Store} & = \widehat{Addr} \rightarrow D \\
+\kappa \in Cont & = \texttt{Halt} ~|~ \texttt{LetK}(v,e,\rho,\kappa) \\
+Addr & = BindAddr + ContAddr \\
+BindAddr &= Var \times Time \\
+ContAddr &= Exp \times Time \\
+d \in D & = \widehat{Clo} + \widehat{Integer} + \widehat{Boolean} \\
+clo \in \widehat{Clo} & = Lam \times \widehat{Env}
+\end{align*}
+\caption{Abstract CESK* state space}
+\label{fig:abstractcesk}
+\end{figure}
+
+store-allocated cont, eliminate recursive structure in state space
+
+storable, set of D
+
+abstract value
+
 abstract state
 
 store-allocated continuation
@@ -282,8 +304,6 @@ Why execute programs on contracts (abstract values) can help us to do the verifi
 
 \subsection{The Sub-Language of Contract}
 The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
-
-
 \begin{figure}[h!]
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
