@@ -167,6 +167,21 @@ This section we will introduce the CESK Machine(TODO: REF) and its concrete sema
 
 \section{Verifying Contracts}
 
+\subsection{Overview}
+The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
+[2 footnote We use the neutral word component to refer to the pieces of a software system. Think module, class, procedure, function, or similar units of code.]
+
+Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier; (2) also due to the contracs run-time check, monitor contracts are expensive.[Higher-order symbolic execution for contract verification and refutation]
+
+To solve theses two issues, we consider to do static verfication with contracts for dynamic languages. Verify dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
+
+\subsection{Contract/Spec as Value}
+Why execute programs on contracts (abstract values) can help us to do the verification? This idea is easy to understand: contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (boundaries calculated).
+
+\subsection{Operation on Predicate/Contract/Spec}
+
+\subsection{Checking Contract}
+
 %----------------------------------------------------------------------------------------
 
 \section{Implementation}
