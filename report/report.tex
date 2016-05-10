@@ -223,10 +223,10 @@ $$ \kappa' = \texttt{LetK}(lhs, body, \rho, \kappa) $$
 
 If the current expression in the state is already a value, and the continuation is \texttt{LetK}, which means the expression can not be reduced further and we need to resume the program from continuation.
 
-$$ \langle v, \rho, \sigma, \texttt{LetK}(v, body, \rho', \kappa) \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
+$$ \langle v, \rho, \sigma, \texttt{LetK}(var, body, \rho', \kappa) \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
 where
 \begin{align*}
-\rho'' & = \rho'[v \rightarrow a] \\
+\rho'' & = \rho'[var \rightarrow a] \\
 \sigma' & = \sigma[a \rightarrow v] \\
 a~&\mbox{is a fresh address}
 \end{align*}
@@ -284,31 +284,41 @@ clo \in \widehat{Clo} & = Lam \times \widehat{Env}
 \label{fig:abstractcesk}
 \end{figure}
 
+Since in abstract CESK machine the store maps an address to a set of abstract value, so the $\mathcal{A}$ will also returns a set of abstract value $\mathcal{P}(\hat{D})$. 
+$$ \mathcal{A} : AExp \times Env \times Store \rightarrow \mathcal{P}(\hat{D}) $$
+The detail of computation on abstract values will be discussed in Section 3.
+
 We also use an injection function to construct initial abstract state:
 
 $$ \mathcal{I} : Exp \rightarrow \widehat{\Sigma} $$
 $$ \mathcal{I}(exp) = \langle exp, [], [], \texttt{Halt}, [] \rangle $$
 
-Unlike the concrete CESK machine, the transition function in abstract CESK machine is from a state to a set of states:
+Unlike the concrete CESK machine, the transition function in abstract CESK machine is from a state to a set of states(non-deterministic):
 
 $$(\longmapsto_{\widehat{CESK}}) \subseteq \Sigma \times \Sigma^{*}$$
 
-Since in abstract CESK machine the store maps an address to a set of abstract value, so the $\mathcal{A}$ will also returns a set of abstract value $\mathcal{P}(\hat{D})$. 
-$$ \mathcal{A} : AExp \times Env \times Store \rightarrow \mathcal{P}(\hat{D}) $$
-The detail of computation on abstract values will be discussed in Section 3.
+Here is the transition rules:
 
-$$
-\langle aexp, \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} \langle v, \rho, \sigma, \kappa, t' \rangle \text{ where } v \in \mathcal{A}(aexp, \rho, \sigma)
-$$
-
-$$ \langle (aexp_0~aexp_1), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} \langle body, \rho'', \sigma', \kappa, t' \rangle $$
-where 
 \begin{align*}
-clo((\lambda~(v)~body), \rho') & \in \mathcal{A}(aexp_0, \rho, \sigma) \\
+% aexp
+\langle aexp, \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle v, \rho, \sigma, \kappa, t' \rangle \text{ where } v \in \mathcal{A}(aexp, \rho, \sigma) \\
+% application
+\langle (aexp_0~aexp_1), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle body, \rho'', \sigma', \kappa, t' \rangle \\
+\text{ where } clo((\lambda~(v)~body), \rho') & \in \mathcal{A}(aexp_0, \rho, \sigma) \\
 \rho'' & = \rho'[v \rightarrow a] \\
-\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1)]
+\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1, \rho, \sigma)] \\
+% let 
+\langle (\texttt{let}~(lhs~rhs)~body), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle rhs, \rho, \sigma', \kappa', t' \rangle \\
+\text{ where } \kappa' & = \texttt{LetK}(lhs, body, \rho, a) \\
+a & = ContAddr((\texttt{let}~(lhs~rhs)~body), t) \\
+\sigma' & = \sigma[a \rightarrow \kappa] \\
+% letk
+\langle v, \rho, \sigma, \texttt{LetK}(var, body, \rho', a), t \rangle \longmapsto_{\widehat{CESK}} & \langle body, \rho'', \sigma', \kappa, t' \rangle  \\
+\text{ where } \rho'' & = \rho'[var \rightarrow a'] \\
+\sigma' & = \sigma[a' \rightarrow v] \\
+a' & = BindAddr(v, t) \\
+k & \in \sigma(a)
 \end{align*}
-
 
 
 
