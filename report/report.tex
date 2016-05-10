@@ -171,14 +171,61 @@ This section we will introduce the CESK Machine(TODO: REF) and its concrete sema
 The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
 [2 footnote We use the neutral word component to refer to the pieces of a software system. Think module, class, procedure, function, or similar units of code.]
 
-Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier; (2) also due to the contracs run-time check, monitor contracts are expensive.[Higher-order symbolic execution for contract verification and refutation]
+Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we metioned in Motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier; (2) also due to the contracs run-time check, monitor contracts are expensive.[Higher-order symbolic execution for contract verification and refutation]
 
-To solve theses two issues, we consider to do static verfication with contracts for dynamic languages. Verify dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
+To solve theses two issues, we do static verfication with contracts for dynamic languages. Verify dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
 
-\subsection{Contract/Spec as Value}
-Why execute programs on contracts (abstract values) can help us to do the verification? This idea is easy to understand: contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (boundaries calculated).
+Why execute programs on contracts (abstract values) can help us to do the verification? This idea is easy to understand: contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is acutally doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
+
+\subsection{The Sub-Language of Contract}
+The Figure \ref{fig3} shows the syntax of our tiny sub-language of contract in BNF.
+
+\begin{figure}[h!]
+\setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
+\setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
+\begin{grammar}
+
+<contract-type> ::= Int | Bool | Any
+\alt (-> <contract-type> <contract-type>)
+\alt (Int <predicate>) | (Bool <predicate>) | (Any \#t)
+
+<predicate> ::= \texttt{\#t} | (<pred-op> <operand> <operand>)
+
+<pred-op> ::= \textless | \textgreater | $\leq$ | $\geq$
+\alt \texttt{=} | \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
+
+<operand> ::= <predicate> | <literal> | <self> | <var>
+
+
+<literal> ::= <integer> | <boolean>
+
+<integer> ::= $\cdots$ | \texttt{-1} | \texttt{0} | \texttt{1} | $\cdots$
+
+<boolean> ::= \texttt{true} | \texttt{false}
+
+<self> ::= _
+
+<var> ::= <symbol>
+\end{grammar}
+\caption{Syntax of ANF}
+\label{fig3}
+\end{figure}
+
+
+\begin{itemize}
+\item ``Any'' means this contract type is unknown.
+
+\item ``_'' represents the self value which is described by the current contract. For instance, this contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and it's less than 3.
+
+\item If the predicate part of a contract is ``\#t'', it means this value can be any concrete value of this given type.
+\end{itemize}
+
 
 \subsection{Operation on Predicate/Contract/Spec}
+For our current work, users only provide the contracts for function definition, and our program will interpret all codes with the provided contracts as inputs.
+
+
+
 
 \subsection{Checking Contract}
 
