@@ -60,7 +60,7 @@ This project presents a method to verify contract of functions in dynamic typing
 
 \textbf{Motivation}
 
-Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checkings are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
+Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checking are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
 
 But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For example, as Figure \ref{fig:example} shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
 
@@ -71,13 +71,13 @@ But dynamic typing also makes program much easier to have bugs since programmer 
 (add1 3)                  ;OK
 (add1 "3")                ;Error
 \end{lstlisting} 
-\caption{A Scheme example}
+\caption{An example in Scheme}
 \label{fig:example}
 \end{figure}
 
-Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satified these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
+Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satisfied these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
 
-Contract provides a way to describe refined behavior of a function, and programmers can utilize contract system and write test cases to syntatically cover the program to find bugs early, but the drawback is it may involve additional performance cost in runtime because contract checking happends on each function application.
+Contract provides a way to describe refined behavior of a function, and programmers can utilize contract system and write test cases to syntactically cover the program to find bugs early, but the drawback is it may involve additional performance cost in runtime because contract checking happens on each function application.
 
 The motivation of our project is we don't want to lose the advantages of dynamic typing, but we also want to write correct programs and catch errors as early as possible, for example, before running the program. So we present a method to check contracts statically in dynamic typing languages. \\
 
@@ -85,7 +85,7 @@ The motivation of our project is we don't want to lose the advantages of dynamic
 
 Our approach is based on abstracting abstract machine(TODO: REF), which is a technique that using abstract machine such as CESK machine (TODO: REF) to do abstract interpretation by transforming concrete semantics to abstract semantics. 
 
-The key idea of our approach is regarding predicate (i.e. the contract) as abstract value. A predicate is an approximation of a value, it descirbes the bound of the value. We build an non-deterministic abstract interpreter that do computations on these abstract values, the term \textit{non-deterministic} means it will explore every possible behaviors of program's runtime. This approach based on abstract interpretation is sound, which means if the input of abstract interpretation is a sound approximation of concrete value, it's guaranteed that the result of abstract interpretation is still a sound approximation of returned concrete value. So that we could leverage abstract interpretation to check the behaviors of a function that depicted by contracts.
+The key idea of our approach is regarding predicate (i.e. the contract) as abstract value. A predicate is an approximation of a value, it describes the bound of the value. We build an non-deterministic abstract interpreter that do computations on these abstract values, the term \textit{non-deterministic} means it will explore every possible behaviors of program's runtime. This approach based on abstract interpretation is sound, which means if the input of abstract interpretation is a sound approximation of concrete value, it's guaranteed that the result of abstract interpretation is still a sound approximation of returned concrete value. So that we could leverage abstract interpretation to check the behaviors of a function that depicted by contracts.
 
 Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK machine.
 
@@ -93,7 +93,7 @@ Section 3 TODO.
 Section 4 TODO.
 Section 5 TODO. \\
 
-At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type(TODO: REF). It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch erros before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
+At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type(TODO: REF). It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch errors before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
 
 %----------------------------------------------------------------------------------------
 
@@ -148,7 +148,7 @@ The Figure \ref{fig:anf} shows the syntax of our tiny language.
 Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>} is optional and mainly used for debugging. And the language has two primitive data types: integer and boolean, as well as primitive operations on these data type are provided. ANF has three kind of expressions:
 
 \begin{itemize}
-\item Atomic expressions (\textit{<aexp>}) include primitive values, functions, and operations on prmitive values. Evaluating these expressions are all trivial, that is immediately and always terminate, and no side effect.
+\item Atomic expressions (\textit{<aexp>}) include primitive values, functions, and operations on primitive values. Evaluating these expressions are all trivial, that is immediately and always terminate, and no side effect.
 
 \item Complex expressions (\textit{<cexp>}) are function applications, \texttt{if} expression and \texttt{letrec} expression. A notable thing is the operand and operator of an application must be an atomic expression, and as well as the condition of \texttt{if} expression and the right hand side of \texttt{lecrec} binding. Complex expression may not terminate, for example, an infinite recursive application.
 
@@ -161,7 +161,7 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for ANF.
 
-CESK machine as an abstract machine, is a formally defined tool for descirbing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its exectuion: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
+CESK machine as an abstract machine, is a formally defined tool for describing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its execution: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
 
 Figure \ref{fig:concretecesk} shows the concrete CESK state space.
 
@@ -184,7 +184,7 @@ The CESK machine is a state transition based machine.  TODO
 Firstly we define an inject function to form the initial state by inserting the initial expression into a state with an empty environment, an empty store and a \texttt{Halt} continuation.
 
 $$ \mathcal{I} : Exp \rightarrow \Sigma $$
-$$ \mathcal{I}(exp) = (exp, [], [], \texttt{Halt}) $$
+$$ \mathcal{I}(exp) = \langle exp, [], [], \texttt{Halt} \rangle $$
 
 Next we define the state transition relations of CESK machine for ANF lambda calculus. \\
 
@@ -204,10 +204,10 @@ where $\mathcal{A}$ is an auxiliary function to evaluate atomic expression and d
 \mathcal{A}((prim, aexp_0, \cdots aexp_i), \rho, \sigma) & = \mathcal{O}(prim)(\mathcal{A}(aexp_0, \rho, \sigma), \cdots \mathcal{A}(aexp_i, \rho, \sigma))
 \end{align*}
 
-where the $\mathcal{O} : Prim \rightarrow (Value^* \rightarrow Value)$ operater is a curry function that maps a name of primitive operation to its actual operation.\\
+where the $\mathcal{O} : Prim \rightarrow (Value^* \rightarrow Value)$ operator is a curry function that maps a name of primitive operation to its actual operation.\\
 
 \textbf{Function Application}\\
-For functiona application, since the A-Normal Form already required the operator and oprand must be atomic expression, so that we can reuse the $\mathcal{A}$ to evaluate them, update the environment and store and then go into the function body.
+For function application, since the A-Normal Form already required the operator and operand must be atomic expression, so that we can reuse the $\mathcal{A}$ to evaluate them, update the environment and store and then go into the function body.
 $$ \langle (aexp_0~aexp_1), \rho, \sigma, \kappa \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
 where 
 \begin{align*}
@@ -223,7 +223,7 @@ $$ \langle (\texttt{let}~(lhs~rhs)~body), \rho, \sigma, \kappa \rangle \longmaps
 where
 $$ \kappa' = \texttt{LetK}(lhs, body, \rho, \kappa) $$
 
-If the current expression in the state is already a value, and the continuation is \texttt{LetK}, which means the expression can not be reduced furhter and we need to resume the program from continuation.
+If the current expression in the state is already a value, and the continuation is \texttt{LetK}, which means the expression can not be reduced further and we need to resume the program from continuation.
 
 $$ \langle v, \rho, \sigma, \texttt{LetK}(v, body, \rho', \kappa) \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
 where
