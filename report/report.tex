@@ -62,7 +62,7 @@ This project presents a method to verify contract of functions in dynamic typing
 
 Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checkings are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
 
-But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For example, as Figure \ref{fig1} shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
+But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For example, as Figure \ref{fig:example} shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
 
 \begin{figure}[h!]
 \lstset{language=Lisp}
@@ -72,7 +72,7 @@ But dynamic typing also makes program much easier to have bugs since programmer 
 (add1 "3")                ;Error
 \end{lstlisting} 
 \caption{A Scheme example}
-\label{fig1}
+\label{fig:example}
 \end{figure}
 
 Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satified these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
@@ -87,7 +87,7 @@ Our approach is based on abstracting abstract machine(TODO: REF), which is a tec
 
 The key idea of our approach is regarding predicate (i.e. the contract) as abstract value. A predicate is an approximation of a value, it descirbes the bound of the value. We build an non-deterministic abstract interpreter that do computations on these abstract values, the term \textit{non-deterministic} means it will explore every possible behaviors of program's runtime. This approach based on abstract interpretation is sound, which means if the input of abstract interpretation is a sound approximation of concrete value, it's guaranteed that the result of abstract interpretation is still a sound approximation of returned concrete value. So that we could leverage abstract interpretation to check the behaviors of a function that depicted by contracts.
 
-Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK Machine.
+Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK machine.
 
 Section 3 TODO. 
 Section 4 TODO.
@@ -109,7 +109,7 @@ At last, I would like to explain the reason why we change the project name. At t
 
 Our small-step abstract interpreter use a small language which is a variant of call-by-value \textit{A-Normal Form} lambda calculus(TODO: REF). Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form(TODO: REF).
 
-The Figure \ref{fig2} shows the syntax of our tiny language.
+The Figure \ref{fig:anf} shows the syntax of our tiny language.
 
 \begin{figure}[h!]
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
@@ -142,7 +142,7 @@ The Figure \ref{fig2} shows the syntax of our tiny language.
 <prim> ::= \texttt{+} | \texttt{-} | \texttt{*} | \texttt{=} | \texttt{and} | \texttt{or} | \texttt{not}
 \end{grammar}
 \caption{Syntax of ANF}
-\label{fig2}
+\label{fig:anf}
 \end{figure}
 
 Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>} is optional and mainly used for debugging. And the language has two primitive data types: integer and boolean, as well as primitive operations on these data type are provided. ANF has three kind of expressions:
@@ -161,9 +161,9 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for ANF.
 
-CESK Machine as an abstract machine, is a formally defined tool for descirbing operational semantics of programming language. As we can see from its name, CESK Machine has four components that compose a \textit{state} of its exectuion: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
+CESK machine as an abstract machine, is a formally defined tool for descirbing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its exectuion: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
 
-Figure \ref{fig3} shows the concrete CESK state space.
+Figure \ref{fig:concretecesk} shows the concrete CESK state space.
 
 \begin{figure}[h!]
 \begin{align*}
@@ -176,17 +176,17 @@ clo \in Clo & = Lam \times Env \\
 a \in Addr & ~ \mbox{is an infinite set of addresses}
 \end{align*}
 \caption{Concrete CESK state space}
-\label{fig3}
+\label{fig:concretecesk}
 \end{figure}
 
-The CESK Machine is a state transition based machine.  TODO
+The CESK machine is a state transition based machine.  TODO
 
 Firstly we define an inject function to form the initial state by inserting the initial expression into a state with an empty environment, an empty store and a \texttt{Halt} continuation.
 
 $$ \mathcal{I} : Exp \rightarrow \Sigma $$
 $$ \mathcal{I}(exp) = (exp, [], [], \texttt{Halt}) $$
 
-Next we define the state transition relations of CESK Machine for ANF lambda calculus. \\
+Next we define the state transition relations of CESK machine for ANF lambda calculus. \\
 
 \textbf{Atomic Expression}\\
 If the current expression is an atomic expression, which means the expression is either primitive values, functions, or operation on primitive values, and we can evaluate it directly.
@@ -223,7 +223,7 @@ $$ \langle (\texttt{let}~(lhs~rhs)~body), \rho, \sigma, \kappa \rangle \longmaps
 where
 $$ \kappa' = \texttt{LetK}(lhs, body, \rho, \kappa) $$
 
-If the current expression in the state is already a value, and the continuation is \texttt{LetK}, which means the expression can not be reduced furhter and we need to resume the program to continuation.
+If the current expression in the state is already a value, and the continuation is \texttt{LetK}, which means the expression can not be reduced furhter and we need to resume the program from continuation.
 
 $$ \langle v, \rho, \sigma, \texttt{LetK}(v, body, \rho', \kappa) \rangle \longmapsto_{CESK} \langle body, \rho'', \sigma', \kappa \rangle $$
 where
@@ -256,9 +256,13 @@ $$ \langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa \rangle \long
 
 %------------------------------------------------
 
-\subsection{Abstracting CESK Machine}
+\subsection{Abstracting CESK* Machine}
 
-In this section, we will derive a non-deterministic CESK Machine for abstract interpretation.
+In this section, we will derive a non-deterministic abstracting CESK* machine for performing \textit{k}-CFA-like analysis(TODO: REF).
+
+abstract state
+
+store-allocated continuation
 
 \subsection{Record Types of Function Application}
 
