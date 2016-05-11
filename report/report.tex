@@ -373,8 +373,9 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \label{figc}
 \end{figure}
 
+Though we have this language syntax definition, we need to clarity that:
 \begin{itemize}
-\item pre-contract, post contract ...
+\item For \texttt{($\rightarrow$} <contract> <contract>\texttt{)}, we call the first <contract> pre-contract, and the last contract post-contract.
 
 \item The wildcard \texttt{_} represents the identifier itself. Sometimes, we don't care the variable name, for instance, contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and less than 3.
 
