@@ -51,3 +51,38 @@
 
 ; reject becuase {another_add2 2} does not satisfy precondition of add2
 (verify-runtime example3 contract3)
+
+
+;============================================
+
+; Example4: higher-order function and contract with predicate
+; multiple5: int[x>3] -> int[y>15]
+; multiple7: int[x>1 && x<3] -> int[x>7 && x<21]
+(define contract4 (define-types->hash
+                    '((: multiple5 (-> (Int (> _ 3)) (Int (> _ 15))))
+                      (: multiple7 (-> (Int (and (> _ 1) (< _ 3)))
+                                  (Int (and (> _ 7) (< _ 21))))))))
+
+(define example4 (parse '{let {{multiple5 {lambda multiple5 {x} {* 5 x}}}}
+                           {let {{multiple7 {lambda multiple7 {x} {* 7 x}}}}
+                             {let {{apply {lambda applyf {f} {lambda applyg {g} {f g}}}}}
+                               {let {{another_multiple5 {apply multiple5}}}
+                                 {let {{another_multiple7 {apply multiple7}}}
+                                   {let {{twenty {another_multiple5 4}}}
+                                     {let {{a-hundred-forty {another_multiple7 twenty}}}
+                                       {another_multiple7 2}}}}}}}}))
+
+; reject becuase {another_add2 2} does not satisfy precondition of add2
+(verify-runtime example4 contract4)
+
+;============================================
+
+; Example5: check contract with bool
+; forever-true: bool -> bool[true]
+(define contract5 (define-types->hash
+                    '((: forever-true (-> Bool (Bool true))))))
+
+(define forever-true (parse '{lambda forever-true {b} true}))
+
+; accept
+(verify-contract forever-true contract5)
