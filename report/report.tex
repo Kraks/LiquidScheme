@@ -9,6 +9,7 @@
 \usepackage[english]{babel} % English language/hyphenation
 \usepackage{amsmath,amsfonts,amsthm} % Math packages
 
+\usepackage{hyperref}
 \usepackage{indentfirst} 
 \usepackage{listings}
 \usepackage{syntax}
@@ -342,7 +343,7 @@ Here we use a way as shown in Figure \ref{fig:transabs} that insert a new contin
 
 \section{Verifying Contracts}
 
-As we mentioned before, the key idea is take contracts as abstract values. In previous part, we derived an abstract machine, now we will describe the computation on these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
+As we mentioned before, the key idea is take contracts as abstract values. In this part, we will describe the computation on these contracts and how to check these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
 
 \subsection{The Syntax of Contract}
 The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
@@ -395,7 +396,7 @@ We will use two examples to illustrate computation on contract:
 \end{itemize}
 
 \subsection{Checking Contracts}
-Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior(i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. To achieve this, we first check is the type tag are same, if not then reject it directly; otherwise, we check is the predicates of abstract value a subset contract's predicates.
+Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior(i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. To achieve this, we first check is the type tag are same, if not then reject it directly; otherwise, we check is the predicates of abstract value a subset of contract's predicates.
 
 To checking the program's behaviors satisfies contract or not, we have two parts as following.
 
@@ -418,17 +419,13 @@ There are two function applications: the first one is \texttt{(id 1)}, and the s
 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The program will be accepted since no function call violate any contracts, in other word, the contracts provides a sound description that contains all possible runtime behaviors.
 \end{itemize}
 
-
 %----------------------------------------------------------------------------------------
 
 \section{Implementation}
 
-To verify our approach, we implemented a prototype verifier in Racket, which can be checked out from 
+To verify our approach, we implemented a prototype verifier in Racket, which can be checked out from \url{https://github.com/Kraks/Verify-Contracts-for-Dynamic-Lang}
 
-\subsection{AAM}
 Store widening.
-
-\subsection{Contract}
 
 %----------------------------------------------------------------------------------------
 
@@ -440,7 +437,6 @@ Store widening.
 The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
 
 Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in the motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier like static type system; (2) the cost of monitoring contracts are expensive. [Higher-order symbolic execution for contract verification and refutation]
-
 
 %----------------------------------------------------------------------------------------
 
