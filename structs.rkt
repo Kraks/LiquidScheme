@@ -8,7 +8,6 @@
 (struct EndK (label arg addr) #:transparent)
 (struct Greater (l s) #:transparent)
 (struct State (exp env kont time) #:transparent)
-
 ;(struct State (exp env store kont time) #:transparent)
 
 ; Exp
@@ -31,8 +30,6 @@
 
 ; Type
 (struct DefineType (name type) #:transparent)
-; (struct TInt (pred) #:transparent)
-; (struct TBool (pred) #:transparent)
 (struct TAny () #:transparent)
 (struct TUnit () #:transparent)
 (struct TArrow (arg ret) #:transparent)
