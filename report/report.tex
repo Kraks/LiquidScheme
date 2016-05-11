@@ -305,10 +305,14 @@ Like the concrete CESK machine, we have 6 transition rules, and figure \ref{fig:
 % aexp
 \langle aexp, \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle v, \rho, \sigma, \kappa, t' \rangle \text{ where } v \in \mathcal{A}(aexp, \rho, \sigma) \\
 % application
-\langle (aexp_0~aexp_1), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle body, \rho'', \sigma', \kappa, t' \rangle \\
-\text{ where } clo((\lambda~(v)~body), \rho') & \in \mathcal{A}(aexp_0, \rho, \sigma) \\
-\rho'' & = \rho'[v \rightarrow a] \\
-\sigma' & = \sigma[a \rightarrow \mathcal{A}(aexp_1, \rho, \sigma)] \\
+\langle (aexp_0~aexp_1), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle body, \rho'', \sigma', \kappa', t' \rangle \\
+\text{ where } clo((\lambda~label~(var)~body), \rho') & \in \mathcal{A}(aexp_0, \rho, \sigma) \\
+\rho'' & = \rho'[var \rightarrow a] \\
+\sigma' & = \sigma[a \rightarrow argv] \\
+argv & = \mathcal{A}(aexp_1, \rho, \sigma) \\
+\kappa' & = \texttt{AppK}(label, argv, \kappa) \\
+% appk
+\langle v, \rho, \sigma, \texttt{AppK}(label, argv, \kappa), t \rangle \longmapsto_{\widehat{CESK}} & \langle v, \rho, \sigma, \kappa, t' \rangle \\
 % let 
 \langle (\texttt{let}~(lhs~rhs)~body), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle rhs, \rho, \sigma', \kappa', t' \rangle \\
 \text{ where } \kappa' & = \texttt{LetK}(lhs, body, \rho, a) \\
@@ -339,6 +343,11 @@ a & = BindAddr((\texttt{letrec}~(lhs~rhs)~body), t) \\
 \end{figure}
 
 \subsection{Tracing Types of Application}
+
+Now we have an abstract machine that could run the program abstractedly, next we need to trace each function call and record the argument and returnd value which will be used when checking contract. 
+
+Here we use a way as shown in Figure \ref{fig:transabs} that insert a new continuation $\texttt{AppK}(label, v, \kappa)$ when applying a function. \texttt{AppK} has three components: \textit{label} is the function's name being called, $v$ is the argument value, and $\kappa$ is the current continuation. When we encounter a state which expression is a value, and the continuation is \texttt{AppK}, it means that expression is returned value of this function call, we should store the argument and returned value into an external hash table and resume program to $\kappa$.
+
 
 %----------------------------------------------------------------------------------------
 
