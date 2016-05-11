@@ -395,16 +395,16 @@ We will use two examples to illustrate computation on contract:
 
 \subsection{Check Contracts}
 %% number this
-We have two parts for checking contracts:
+We have two parts for checking contracts.
 \begin{itemize}
-\item Verify the user provided contracts and user defined functions are compatible. e.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
+\item Verifying whether the user provided contracts and function's actual behaviors are compatible, if not, the function should be rejected. E.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
 
-\item Verify the use of the defined functions are compatible with the contracts. e.g.: assume a given function \texttt{id}, its definition is the same as that in the item above. For a dynamic typing language without any limitation, from this definition, we can say \texttt{id} is polymorphism with input and output have the same type (and value). Let's apply it:
+\item Verifying the use of the defined functions are compatible with the contracts. e.g.: assume a given function \texttt{id}, its definition is the same as that in the item above. For a dynamic typing language without any limitation, from this definition, we can say \texttt{id} is polymorphism with input and output have the same type (and value). Let's apply it:
 \begin{verbatim}
-                  (let ((id (lambda id (x) x)))
-                    (let ((one (id 1)))
-                      (let ((fls (id false)))
-                        one)))
+(let ((id (lambda id (x) x)))
+  (let ((one (id 1)))
+    (let ((fls (id false)))
+      one)))
 \end{verbatim}
 Considering two cases: 1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
 \end{itemize}
