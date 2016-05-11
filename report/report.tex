@@ -397,16 +397,22 @@ We will use two examples to illustrate computation on contract:
 %% number this
 We have two parts for checking contracts.
 \begin{itemize}
-\item Verifying whether the user provided contracts and function's actual behaviors are compatible, if not, the function should be rejected. E.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
+\item Checking whether the user provided contracts and the actual behaviors of corresponding function are compatible, if not, the function should be rejected. E.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
 
-\item Verifying the use of the defined functions are compatible with the contracts. e.g.: assume a given function \texttt{id}, its definition is the same as that in the item above. For a dynamic typing language without any limitation, from this definition, we can say \texttt{id} is polymorphism with input and output have the same type (and value). Let's apply it:
+\item Checking whether every argument and returned value of function call satisfies its corresponding contracts. For an example as follows, an identity function \texttt{id}, from this definition, we can say that \texttt{id} is polymorphism with input and output have the same type (and value).
+
 \begin{verbatim}
 (let ((id (lambda id (x) x)))
   (let ((one (id 1)))
     (let ((fls (id false)))
       one)))
 \end{verbatim}
-Considering two cases: 1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
+
+There are two function applications: the first one is \texttt{(id 1)}, and the second one is \texttt{(id false)}. Now consider two cases with different contracts.
+
+1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code has an application that applis \texttt{false} on function \texttt{id}, while the contract only allows argument with type \texttt{Int}, the program will be rejected.
+
+2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
 \end{itemize}
 
 
