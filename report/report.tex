@@ -439,7 +439,7 @@ Our project utilize abstract interpretation and build an analyzer to analyze the
 The prototype verifier can correctly checking contract with primitve data type such as \texttt{Int} or \texttt{Bool}, but still we may improve the it in several aspects:
 \begin{itemize}
 \item Supporting verification for function type. To achieve this, we can check is a function type a subtype of another function type by contravariance.
-\item Supporting dependent contract which 
+\item Supporting dependent contract which means the post-condition can be dependent on some value from pre-condition. In order to do that, we cloud use a \texttt{lambda} which takes an arugment to wrap post-condition.
 \item Extending the language and its contract system to support more data types such as \texttt{list}, and support more primitive function such as \texttt{call/cc}.
 \end{itemize}
 
