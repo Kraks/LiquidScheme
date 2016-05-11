@@ -342,19 +342,7 @@ Here we use a way as shown in Figure \ref{fig:transabs} that insert a new contin
 
 \section{Verifying Contracts}
 
-As we mentioned before, the key idea is take contracts as abstract values. In previous part, we derived an abstract machine, 
-
-In our project, we define contract as \textit{a type tag with a set of predicates on value}.
-
-\subsection{Overview}
-The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
-[2 footnote We use the neutral word component to refer to the pieces of a software system. Think module, class, procedure, function, or similar units of code.]
-
-Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in the motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier like static type system; (2) the cost of monitoring contracts are expensive. [Higher-order symbolic execution for contract verification and refutation]
-
-To solve theses two issues, we do static verification with contracts for dynamic languages. Verifying dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
-
-Why execute programs on contracts (abstract values) can help us do the verification? Actually, contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is actually doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
+As we mentioned before, the key idea is take contracts as abstract values. In previous part, we derived an abstract machine, now we will describe the computation on these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
 
 \subsection{The Syntax of Contract}
 The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
@@ -396,7 +384,7 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \subsection{Operation on Contracts (Abstract Values)}
 For our current work, users only provide the contracts for user defined functions, and our program will abstractly interpret all codes with the provided contracts as input abstract values.
 We know the interpretation process is actually defined by a function $\delta$ that maps an operation and its input argument values to the output value. This is true no matter the input argument values are concrete or abstract. There is no essential difference and boundary between concrete and abstract interpretation. We can choose a level of abstraction, and consider one interpretation as abstract interpretation when its level of abstraction is higher than the one we choose. However, once we decide what level of abstraction is concrete interpretation, from the output values we can differentiate the non-abstract and abstract interpretation: when there are valid input values, non-abstract interpretation has a unique answer, while the output of abstract interpretation is a set of answers. The means the abstract interpretation reduces an operation nondeterministically. e.g. $\delta(sub1, 1) = 1$, $\delta\hat{}(sub1, 1) = \{Int\}$ , $\delta\hat{}(even?, \bullet) = {true, false}$. $\delta$ represents concrete interpretation, and $\delta\hat{}$ represents abstract interpretation. Here I use $\bullet$ to represent a value we no nothing about it.
-We will use two example to illustrate how to operate on contract:
+We will use two examples to illustrate computation on contract:
 \begin{itemize}
 \item Suppose in one step we want to get the contract of $(+ x y)$, and we know that the contract of $x$ is \texttt{(Int\ (\textless\ \underscore\ 3))} and the contract of $y$ is \texttt{(Int\ (\textless\ \underscore\ 4))} and the result of abstract interpretation is a value with the contract of \texttt{(Int\ (\textless\ \underscore\ 7))}.
 
@@ -418,7 +406,7 @@ We have two parts for checking contracts:
                       (let ((fls (id false)))
                         one)))
 \end{verbatim}
-Consider two cases: 1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
+Considering two cases: 1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code also applies $id$ on \texttt{Bool}, it will be rejected. 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The code will be accepted. 
 \end{itemize}
 
 
@@ -440,6 +428,10 @@ Store widening.
 %----------------------------------------------------------------------------------------
 
 \section{Related Work}
+The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
+
+Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in the motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier like static type system; (2) the cost of monitoring contracts are expensive. [Higher-order symbolic execution for contract verification and refutation]
+
 
 %----------------------------------------------------------------------------------------
 
