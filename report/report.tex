@@ -334,7 +334,6 @@ Now we have an abstract machine that could run the program abstractedly, next we
 
 Here we use a way as shown in Figure \ref{fig:transabs} that insert a new continuation $\texttt{AppK}(label, v, \kappa)$ when applying a function. \texttt{AppK} has three components: \textit{label} is the function's name being called, $v$ is the argument value, and $\kappa$ is the current continuation. When we encounter a state which expression is a value, and the continuation is \texttt{AppK}, it means that expression is returned value of this function call, we should store the argument and returned value into an external hash table and resume program to $\kappa$.
 
-
 %----------------------------------------------------------------------------------------
 
 \section{Verifying Contracts}
@@ -416,7 +415,7 @@ To checking the program's behaviors satisfies contract or not, we have two parts
 
 There are two function applications: the first one is \texttt{(id 1)}, and the second one is \texttt{(id false)}. Now consider two cases with different contracts.
 
-1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code has an application that applis \texttt{false} on function \texttt{id}, while the contract only allows argument with type \texttt{Int}, the program will be rejected.
+1) The given contract is \texttt{(: id ($\rightarrow$ Int Int))}. Since the above code has an application that applies \texttt{false} on function \texttt{id}, while the contract only allows argument with type \texttt{Int}, the program will be rejected.
 
 2) The given contracts are \texttt{(: id ($\rightarrow$ Int Int))} and \texttt{(: id ($\rightarrow$ Bool Bool))}. The program will be accepted since no function call violate any contracts, in other word, the contracts provides a sound description that contains all possible runtime behaviors.
 \end{itemize}
@@ -442,10 +441,10 @@ Tobin-Hochstadt and Van Horn propose an approach to reasoning higher-order progr
 \section{Conclusion and Future Work}
 Our project utilize abstract interpretation and build an analyzer to analyze the runtime function call behaviors of dynamic typed programs, then could verify the program with user-defined contracts by checking the runtime abstract value and contract is compatible or not. As a tool it cloud help programmer catch bugs before running the program when using dynamic typing programming language. \\
 
-The prototype verifier can correctly checking contract with primitve data type such as \texttt{Int} or \texttt{Bool}, but still we may improve the it in several aspects:
+The prototype verifier can correctly checking contract with primitive data type such as \texttt{Int} or \texttt{Bool}, but still we may improve the it in several aspects:
 \begin{itemize}
 \item Supporting verification for function type. To achieve this, we can check is a function type a subtype of another function type by contravariance.
-\item Supporting dependent contract which means the post-condition can be dependent on some value from pre-condition. In order to do that, we cloud use a \texttt{lambda} which takes an arugment to wrap post-condition.
+\item Supporting dependent contract which means the post-condition can be dependent on some value from pre-condition. In order to do that, we cloud use a \texttt{lambda} which takes an argument to wrap post-condition.
 \item Extending the language and its contract system to support more data types such as \texttt{list}, and support more primitive function such as \texttt{call/cc}.
 \end{itemize}
 
