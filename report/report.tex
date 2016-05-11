@@ -237,9 +237,9 @@ a~&\mbox{is a fresh address}
 $$ \langle (\texttt{letrec}~(lhs~rhs)~body), \rho, \sigma, \kappa \rangle \longmapsto_{CESK} \langle body, \rho', \sigma', \kappa \rangle $$
 where
 \begin{align*}
-\rho' & = \rho[v \rightarrow a] \\
+\rho' & = \rho[lhs \rightarrow a] \\
+v & = \mathcal{A}(rhs, \rho', \sigma) \\
 \sigma' & = \sigma[a \rightarrow v] \\
-v & = \mathcal{A}(rhs, \rho, \sigma) \\
 a~&\mbox{is a fresh address}
 \end{align*}
 
@@ -298,8 +298,9 @@ Unlike the concrete CESK machine, the transition function in abstract CESK machi
 
 $$(\longmapsto_{\widehat{CESK}}) \subseteq \Sigma \times \Sigma^{*}$$
 
-Here is the transition rules:
+Like the concrete CESK machine, we have 6 transition rules, and figure \ref{fig:transabs} shows them, where $t' = tick(\sigma)$. $tick$ is a function we used for performing $k$-CFA-like analysis and it records the last $k$ call site: $tick \langle e, \_, \_, \_, t \rangle = {\lfloor e : t \rfloor}_{k} $
 
+\begin{figure}[h!]
 \begin{align*}
 % aexp
 \langle aexp, \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle v, \rho, \sigma, \kappa, t' \rangle \text{ where } v \in \mathcal{A}(aexp, \rho, \sigma) \\
@@ -318,10 +319,24 @@ a & = ContAddr((\texttt{let}~(lhs~rhs)~body), t) \\
 \text{ where } \rho'' & = \rho'[var \rightarrow a'] \\
 \sigma' & = \sigma[a' \rightarrow v] \\
 a' & = BindAddr(v, t) \\
-k & \in \sigma(a)
+k & \in \sigma(a) \\
+% letrec
+\langle (\texttt{letrec}~(lhs~rhs)~body), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} & \langle body, \rho', \sigma', \kappa, t' \rangle \\
+\text{ where } \rho' & = \rho[v \rightarrow a] \\
+\sigma' & = \sigma[a \rightarrow \mathcal{A}(rhs, \rho', \sigma) \\
+a & = BindAddr((\texttt{letrec}~(lhs~rhs)~body), t) \\
+% if
+\langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa, t \rangle \longmapsto_{\widehat{CESK}} &
+\begin{cases}
+\langle thn, \rho, \sigma, \kappa, t' \rangle \text{if } \texttt{true} \in v \\
++ \\
+\langle els, \rho, \sigma, \kappa, t' \rangle \text{if } \texttt{false} \in v
+\end{cases} \\
+\text{ where } v & = \mathcal{A}(cond, \rho, \sigma)
 \end{align*}
-
-
+\caption{Transition rules of abstract CESK machine}
+\label{fig:transabs}
+\end{figure}
 
 \subsection{Tracing Types of Application}
 
