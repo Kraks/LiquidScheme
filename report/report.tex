@@ -429,8 +429,6 @@ To verify our approach, we implemented a prototype verifier in Racket, which can
 
 \section{Related Work}
 
-The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
-
 Tobin-Hochstadt and Van Horn propose an approach to reasoning higher-order program by extending symbolic execution to use behavioral contracts as symbolic values\cite{Tobin-Hochstadt:2012:HSE:2384616.2384655}, and then could verify contracts statically and properly blame value which violate the contract. Their work is very similar with our method, but since in the early of project we are focusing on refinement until we realized our work is actually verifying contracts, so our work in the project are mostly independent.
 
 %----------------------------------------------------------------------------------------
