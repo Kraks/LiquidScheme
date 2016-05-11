@@ -417,9 +417,13 @@ abs:
     [(BoolValue p) (Bool p)]))
 
 ; Expr Hash -> Void
+#;
 (define (reform-tarrow-s2s tarrow-s2s)
   (define arg-tp (TArrow-arg tarrow-s2s))
   (define ret-tp (TArrow-ret tarrow-s2s))
+  #:(apply append (set-map arg-tp
+                         (lambda (atp)
+                           (TArrow atp ret-tp))))
   (apply append (set-map arg-tp
                          (lambda (atp)
                            (TArrow atp ret-tp)))))
@@ -439,9 +443,11 @@ abs:
   (define (aux tarrow)
     (define arg (TArrow-arg tarrow))
     (define call2type (aval-infer (App func (transform arg))))
-    (define avaled-tarrows 
-      (set-map (hash-ref call2type func-name)
-               reform-tarrow-s2s))
+    (define avaled-tarrows
+      (hash-ref call2type func-name)
+      #;(set-map (hash-ref call2type func-name)
+               reform-tarrow-s2s)
+      )
     
     (displayln avaled-tarrows)
     (define given-returns (TArrow-ret tarrow))
@@ -470,7 +476,7 @@ abs:
       (printf "Error: contract violate: ~a\n" func-name)
       (void)))
 
-; Expr Hash ->
+; Expr Hash -> Void (with side effect of printing)
 (define (verify-runtime expr contracts)
   (define call2type (aval-infer expr))
   (for ([(label arrows)
