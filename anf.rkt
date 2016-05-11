@@ -417,17 +417,6 @@ abs:
     [(BoolValue p) (Bool p)]))
 
 ; Expr Hash -> Void
-#;
-(define (reform-tarrow-s2s tarrow-s2s)
-  (define arg-tp (TArrow-arg tarrow-s2s))
-  (define ret-tp (TArrow-ret tarrow-s2s))
-  #:(apply append (set-map arg-tp
-                         (lambda (atp)
-                           (TArrow atp ret-tp))))
-  (apply append (set-map arg-tp
-                         (lambda (atp)
-                           (TArrow atp ret-tp)))))
-
 (define (is-sub-returns? a-return g-returns)
   (any identity
        (set-map g-returns (lambda (gr) (is-sub-type? a-return gr)))))
@@ -444,12 +433,8 @@ abs:
     (define arg (TArrow-arg tarrow))
     (define call2type (aval-infer (App func (transform arg))))
     (define avaled-tarrows
-      (hash-ref call2type func-name)
-      #;(set-map (hash-ref call2type func-name)
-               reform-tarrow-s2s)
-      )
-    
-    (displayln avaled-tarrows)
+      (hash-ref call2type func-name))    
+    ;;; (displayln avaled-tarrows)
     (define given-returns (TArrow-ret tarrow))
     (define match-status
       (for/and ([avaled-tarrow avaled-tarrows])
@@ -464,13 +449,13 @@ abs:
 (define (check-contract instance contracts func-name)
   (define arg (TArrow-arg instance))
   (define ret (TArrow-ret instance))
-  (displayln arg)
-  (displayln ret)
+  ;;;(displayln arg)
+  ;;;(displayln ret)
   ;(printf "~a ~a\n" arg ret)
   (define arg-match-contracts
     (filter (lambda (c) (is-sub-type? arg (begin (TArrow-arg c)))) (set->list contracts)))
   (define compitable-contracts
-    (filter (lambda (c) (match-returns? ret (begin (display (TArrow-ret c))
+    (filter (lambda (c) (match-returns? ret (begin #;(display (TArrow-ret c))
                                                              (TArrow-ret c)))) arg-match-contracts))
   (if (null? compitable-contracts)
       (printf "Error: contract violate: ~a\n" func-name)

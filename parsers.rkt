@@ -118,10 +118,33 @@
     [`(,rator ,rand) (App (parse rator) (parse rand))]))
 
 
-;; TODO:
-; below:  pred-processing preds
-
 ;; TESTS
+(module+ test
+  (define h (define-types->hash
+              '((: a (-> Int Int))
+                (: b (-> Int Int))
+                (: c (-> Int Int))
+                (: c (-> Bool Bool)))))
+  (check-equal? h
+                (hash 'a
+                      (set (TArrow (IntValue #t) (set (IntValue #t))))
+                      'c
+                      (set (TArrow (IntValue #t) (set (IntValue #t)))
+                           (TArrow (BoolValue #t) (set (BoolValue #t))))
+                      'b
+                      (set (TArrow (IntValue #t) (set (IntValue #t))))))
+  
+  (define hh (define-types->hash
+               '((: abs (-> (Int (and 3 (or (> _ 8) (< _ 18)))) (Int (> _ 1)))))))
+  
+  (check-equal? hh (hash 'abs
+                         (set (TArrow (IntValue 3)
+                                      (set (IntValue (PAnd (PGreater (PSelf) 1)
+                                                           (PGreater +inf.f (PSelf)))))))))
+
+  hh)
+
+
 #;
 (module+ test
   (define h (define-types->hash
@@ -146,8 +169,7 @@
                                       (set (IntValue (PAnd (PGreater (PSelf) 1)
                                                            (PGreater +inf.f (PSelf)))))))))
 
-  hh
-  )
+  hh)
 
 
 ; hash: symbol -> Set(TArrow)
