@@ -433,15 +433,15 @@ Tobin-Hochstadt and Van Horn propose an approach to reasoning higher-order progr
 
 %----------------------------------------------------------------------------------------
 
-\section{Future Work}
-We may improve the prototype verifier in several aspects:
-\begin{itemize}
-\item To support checking function type. Contract can be also used to check 
-\item To support dependent contract
-\end{itemize}
+\section{Conclusion and Future Work}
+Our project utilize abstract interpretation and build an analyzer to analyze the runtime function call behaviors of dynamic typed programs, then could verify the program with user-defined contracts by checking the runtime abstract value and contract is compatible or not. As a tool it cloud help programmer catch bugs before running the program when using dynamic typing programming language. \\
 
-\section{Conclusion}
-Our project utilize abstract interpretation and build an analyzer to analyze the runtime function call behaviors of dynamic typed programs, then could verify the program with user-defined contracts. It cloud help programmer catch bugs early when using dynamic typing programming language,  TODO
+The prototype verifier can correctly checking contract with primitve data type such as \texttt{Int} or \texttt{Bool}, but still we may improve the it in several aspects:
+\begin{itemize}
+\item Supporting verification for function type. To achieve this, we can check is a function type a subtype of another function type by contravariance.
+\item Supporting dependent contract which 
+\item Extending the language and its contract system to support more data types such as \texttt{list}, and support more primitive function such as \texttt{call/cc}.
+\end{itemize}
 
 \renewcommand\refname{Reference}
 \bibliographystyle{plain}
