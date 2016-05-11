@@ -382,6 +382,8 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \end{itemize}
 
 \subsection{Operation on Contracts (Abstract Values)}
+In this part, we will introduce how we do computation on abstract values. Abstract value and contract have same structure, they both have a type tag and a set of predicates. But for clarity, we use term \textit{abstract value} to denote program's runtime information, which obtained from our abstract interpretation; and use term \textit{contract} to represent user-defined contraints on program. \\
+
 For our current work, users only provide the contracts for user defined functions, and our program will abstractly interpret all codes with the provided contracts as input abstract values.
 We know the interpretation process is actually defined by a function $\delta$ that maps an operation and its input argument values to the output value. This is true no matter the input argument values are concrete or abstract. There is no essential difference and boundary between concrete and abstract interpretation. We can choose a level of abstraction, and consider one interpretation as abstract interpretation when its level of abstraction is higher than the one we choose. However, once we decide what level of abstraction is concrete interpretation, from the output values we can differentiate the non-abstract and abstract interpretation: when there are valid input values, non-abstract interpretation has a unique answer, while the output of abstract interpretation is a set of answers. The means the abstract interpretation reduces an operation nondeterministically. e.g. $\delta(sub1, 1) = 1$, $\delta\hat{}(sub1, 1) = \{Int\}$ , $\delta\hat{}(even?, \bullet) = {true, false}$. $\delta$ represents concrete interpretation, and $\delta\hat{}$ represents abstract interpretation. Here I use $\bullet$ to represent a value we no nothing about it.
 We will use two examples to illustrate computation on contract:
@@ -391,10 +393,10 @@ We will use two examples to illustrate computation on contract:
 \item Cases with conditionals, when we don't know the exact value of the input condition, is a little more complicated. The result contract of $(if \bullet x y)$. Assume the same contracts for $x$ and $y$ as above, the result contract is \{\texttt{(Int\ (\textless\ \underscore\ 3))}, \texttt{(Int\ (\textless\ \underscore\ 4))}\}.
 
 \end{itemize}
- 
 
 \subsection{Checking Contracts}
-%% number this
+Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior(i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. To achieve this, we first check is the type tag are same, if not then reject it directly; otherwise, we check is the predicates of abstract value a subset contract's predicates.
+
 To checking the program's behaviors satisfies contract or not, we have two parts as following.
 
 \begin{itemize}
@@ -421,7 +423,7 @@ There are two function applications: the first one is \texttt{(id 1)}, and the s
 
 \section{Implementation}
 
-To verify our approach, we implemented a prototype verifier for ANF in Racket language.
+To verify our approach, we implemented a prototype verifier in Racket, which can be checked out from 
 
 \subsection{AAM}
 Store widening.
