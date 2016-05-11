@@ -338,10 +338,11 @@ Here we use a way as shown in Figure \ref{fig:transabs} that insert a new contin
 
 \section{Verifying Contracts}
 
-As we mentioned before, the key idea is to take contracts as abstract values. In this part, we will describe the computation on these contracts and how to check these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
+As we mentioned before, the key idea is to take contracts as abstract values. In this part, we will describe the calculation on these contracts and how to check these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
 
 \subsection{The Syntax of Contract}
-The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
+The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF. Though we have this formal syntax definition of contract, we still would like to claify some points:
+
 \begin{figure}[h!]
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
@@ -373,9 +374,10 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \label{figc}
 \end{figure}
 
-Though we have this language syntax definition, we need to clarity that:
 \begin{itemize}
-\item For \texttt{($\rightarrow$} <contract> <contract>\texttt{)}, we call the first <contract> pre-contract, and the last contract post-contract.
+\item \texttt{($\rightarrow$} <contract> <contract> \texttt{)} is a contract for function. The first contract is pre-condition, and the second one is post-condition for function.
+
+\item \texttt{(Int} <predicate> \texttt{)} and \texttt{(Bool} <predicate> \texttt{)} are contracts on primitive data type.
 
 \item The wildcard \texttt{_} represents the identifier itself. Sometimes, we don't care the variable name, for instance, contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and less than 3.
 
@@ -384,18 +386,14 @@ Though we have this language syntax definition, we need to clarity that:
 \item Programmers can provide multiple contracts to describe intersection type for one function.
 \end{itemize}
 
-\subsection{Operation on The Predicates of Contracts}
-In this part, we will introduce how to do computation on abstract values. Abstract value and contract have the same structure, they both have a type tag and a set of predicates. But for clarity, we use term \textit{abstract value} to denote program's runtime information, which obtained from our abstract interpretation; and use term \textit{contract} to represent user-defined contraints on program. \\
+\subsection{Contract Calculation}
+In this part, we will introduce how to do computation on abstract values. Abstract value and contract have the same structure, they both have a type tag and a set of predicates. But for clarity, we use term \textit{abstract value} to denote program's runtime information, which obtained from our abstract interpretation; and use term \textit{contract} to represent user-defined contraints on program. 
 
-For our current work, users only provide the contracts for user defined functions, and our program will abstractly interpret all codes with the provided contracts. Next section will describe the outline of this. Here we will describe the central part of the calculation we need to do when do operation on contracts: predicate calculation. \\
+The core idea of doing calculation over contracts is to find a sound approximation that contains all possible result that comes from concrete calculation. We notice that the essence of a predicate is a union of sets that descirbe the domain of value, so the computation is actually find the upper bound and lower bound of result according to the operation.
 
-Predicates calculation is simply if we notice that in math the essense of a predicate is a set of sets, e.g.: \texttt{(or (and (\textgreater\ \underscore\ 3) (\textless\ \underscore\ 5) Int) ($\geq$ \underscore\ 10))} is acutally ${(3, 5), [10, +inf)}$. If we want to do a calculation between this predicate and an abstract integer, suppose the operation is addition and the abstract integer is \texttt{Int (\textgreater\ \underscore\ 4)}, we acutally do the calculation between the subsets of ${(3, 5), [10, +inf)}$ and ${(4, +inf)}$. The result is the union of the results of subsets calculation ${(7, +inf)}$. \\
+For example, assume there are two contracts \texttt{(Int (or (and (\textgreater\ \underscore\ 3) (\textless\ \underscore\ 5)) ($\geq$ \underscore\ 10)))} and \texttt{(Int (\textgreater \underscore 4))}, and we want to an addition on these contract, the result is ${(7, +inf)}$.
 
-Cases with branches, when we don't know the exact value of pre-predicate, is a little more complicated. Through the predicate calculation, we get the result of \texttt{(if\ no-exact-value-pre-predicate\ x\ y))} is a set which includes the predicates of $x$ and $y$. This is a reasonable approximation to the concrete interpretation: if we don't know how to choose one branch, choose all possible branches. \\
-
-
-% We know the interpretation process is actually defined by a function $\delta$ that maps an operation and its input argument values to the output value. This is true no matter the input argument values are concrete or abstract. There is no essential difference and boundary between concrete and abstract interpretation. We can choose a level of abstraction, and consider one interpretation as abstract interpretation when its level of abstraction is higher than the one we choose. However, once we decide what level of abstraction is concrete interpretation, from the output values we can differentiate the non-abstract and abstract interpretation: when there are valid input values, non-abstract interpretation has a unique answer, while the output of abstract interpretation is a set of answers. The means the abstract interpretation reduces an operation nondeterministically. e.g. $\delta(sub1, 1) = 1$, $\delta\hat{}(sub1, 1) = \{Int\}$ , $\delta\hat{}(even?, \bullet) = {true, false}$. $\delta$ represents concrete interpretation, and $\delta\hat{}$ represents abstract interpretation. Here I use $\bullet$ to represent a value we no nothing about it.
-
+In our current implementation, we implements \texttt{+}, \texttt{-}, \texttt{*} operators over abstract integers, and \texttt{and} and \texttt{or} operators over abstract booleans.
 
 \subsection{Checking Contracts}
 Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior (i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. We say a concrete value satisfies a contract iff the type of them are same and all predicate on that value is true; and an abstract value satisfies a contract iff type of them are are same and the predicates of abstract value is a subset of contract's predicates. \\
@@ -426,8 +424,6 @@ There are two function applications: the first one is \texttt{(id 1)}, and the s
 \section{Implementation}
 
 To verify our approach, we implemented a prototype verifier in Racket, which can be checked out from \url{https://github.com/Kraks/Verify-Contracts-for-Dynamic-Lang}
-
-Store widening.
 
 %----------------------------------------------------------------------------------------
 
