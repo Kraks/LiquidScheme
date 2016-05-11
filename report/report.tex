@@ -285,7 +285,7 @@ $$ \mathcal{I}(exp) = \langle exp, [], [], \texttt{Halt}, [] \rangle $$
 
 Unlike the concrete CESK machine, the transition function in abstract CESK machine is from a state to a set of states(non-deterministic):
 
-$$(\longmapsto_{\widehat{CESK}}) \subseteq \Sigma \times \Sigma^{*}$$
+$$(\longmapsto_{\widehat{CESK}}) \subseteq \widehat{\Sigma} \times \widehat{\Sigma}^{*}$$
 
 Like the concrete CESK machine, we have 6 transition rules, and figure \ref{fig:transabs} shows them, where $t' = tick(\sigma)$. $tick$ is a function we used for performing $k$-CFA-like analysis and it records the last $k$ call site: $tick \langle e, \_, \_, \_, t \rangle = {\lfloor e : t \rfloor}_{k} $
 
@@ -342,13 +342,17 @@ Here we use a way as shown in Figure \ref{fig:transabs} that insert a new contin
 
 \section{Verifying Contracts}
 
+As we mentioned before, the key idea is take contracts as abstract values. In previous part, we derived an abstract machine, 
+
+In our project, we define contract as \textit{a type tag with a set of predicates on value}.
+
 \subsection{Overview}
 The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
 [2 footnote We use the neutral word component to refer to the pieces of a software system. Think module, class, procedure, function, or similar units of code.]
 
-Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in Motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier; (2) also due to the contracts run-time check, monitor contracts are expensive.[Higher-order symbolic execution for contract verification and refutation]
+Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in the motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier like static type system; (2) the cost of monitoring contracts are expensive. [Higher-order symbolic execution for contract verification and refutation]
 
-To solve theses two issues, we do static verification with contracts for dynamic languages. Verify dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
+To solve theses two issues, we do static verification with contracts for dynamic languages. Verifying dynamic languages is more difficult than verify static languages. We can't just use the type inference method used to analysis static languages. However, if we consider contracts as abstract values and execute programs on them, the verification can be done.
 
 Why execute programs on contracts (abstract values) can help us do the verification? Actually, contracts are used to bound values, and they contains all the given information of the boundaries of values. Execute programs on them is actually doing the calculation of boundaries. The inputs are pre-contracts, and the outputs are post-contracts (calculated boundaries).
 
@@ -358,16 +362,14 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \setlength{\grammarparsep}{7pt plus 1pt minus 1pt} % increase separation between rules
 \setlength{\grammarindent}{8em} % increase separation between LHS/RHS 
 \begin{grammar}
-<contract-type> ::= \texttt{Int} | \texttt{Bool} | \texttt{Any} | \texttt{($\rightarrow$} <contract-type> <contract-type>\texttt{)}
-\alt \texttt{(Int} <predicate> \texttt{)} | \texttt{(Bool} <predicate> \texttt{)} | \texttt{(Any \#t)}
+<contract> ::= \texttt{($\rightarrow$} <contract> <contract>\texttt{)}
+\alt \texttt{(Int} <predicate> \texttt{)} | \texttt{(Bool} <predicate> \texttt{)}
 
 <predicate> ::= \texttt{\#t} | \texttt{(}<pred-op> <operand> <operand> \texttt{)}
 
-<pred-op> ::= \texttt{\textless} | \texttt{\textgreater} | \texttt{$\leq$} | \texttt{$\geq$} | \texttt{=}
-\alt \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
+<pred-op> ::= \texttt{\textless} | \texttt{\textgreater} | \texttt{$\leq$} | \texttt{$\geq$} | \texttt{=} | \texttt{!=} | \texttt{and} | \texttt{or} | \texttt{not}
 
 <operand> ::= <predicate> | <literal> | <self> | <var>
-
 
 <literal> ::= <integer> | <boolean>
 
@@ -384,13 +386,11 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 \end{figure}
 
 \begin{itemize}
-\item \texttt{Any} means this contract type is unknown.
-
-\item \texttt{_} represents the self value which is described by the current contract. For instance, this contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and it's less than 3.
+\item The wildcard \texttt{_} represents the identifier itself. Sometimes, we don't care the variable name, for instance, contract \texttt{(Int\ (\textless\ \underscore\ 3))} describes a variable which is an integer and less than 3.
 
 \item If the predicate part of a contract is \texttt{\#t}, it means this value can be any concrete value of this given type.
 
-\item You can write multiple contracts for one function.
+\item Programmers can provide multiple contracts for one function.
 \end{itemize}
 
 \subsection{Operation on Contracts (Abstract Values)}
