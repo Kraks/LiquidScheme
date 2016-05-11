@@ -43,13 +43,9 @@
 \title{	
 \normalfont \normalsize 
 \textsc{CS 6110 Final Report, University of Utah} \\ [25pt] % Your university, school and/or department name(s)
-\horrule{0.5pt} \\[0.4cm] % Thin top horizontal rule
-\huge Verifying Contracts for Dynamic Typing Language \\ % The assignment title
-\horrule{2pt} \\[0.5cm] % Thick bottom horizontal rule
+\huge Verifying Contracts for Dynamic Typing Language Statically \\ % The assignment title
 }
-
 \author{Guannan Wei, Jian Lan} % Your name
-
 %\date{\normalsize\today} % Today's date or a custom date
 \begin{document}
 
@@ -63,18 +59,13 @@ This project presents a method to verify contract of functions in dynamic typing
 
 Many popular languages such as Python, Perl, Ruby, JavaScript and Scheme are dynamic typing, which means the type of value of an identifier may change in runtime, and the type checking are performed in runtime rather than compile-time. This feature helps programmers to build prototype rapidly because programmers don't need to firstly write type annotations and make the annotations be accepted by type checker.
 
-But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For example, as Figure \ref{fig:example} shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
+But dynamic typing also makes program much easier to have bugs since programmer can not catch errors until it raised in runtime. For instance, as the following example shows, the function \texttt{add1} executes a simple arithmetic operation that adds \texttt{1} to \texttt{x}. But if we pass a string argument \texttt{"3"} to \texttt{add1}, the type error \textit{only} will be raised when program runs to that call site.
 
-\begin{figure}[h!]
-\lstset{language=Lisp}
-\begin{lstlisting}[frame=single]
+\begin{verbatim}
 (define (add1 x) (+ x 1)) ;Defining a function
 (add1 3)                  ;OK
 (add1 "3")                ;Error
-\end{lstlisting} 
-\caption{An example in Scheme}
-\label{fig:example}
-\end{figure}
+\end{verbatim}
 
 Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satisfied these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
 
@@ -160,9 +151,7 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for our core language.
 
-CESK machine as an abstract machine, is a formally defined tool for describing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its execution: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. 
-
-Figure \ref{fig:concretecesk} shows the concrete CESK state space.
+CESK machine as an abstract machine, is a formally defined tool for describing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its execution: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. Figure \ref{fig:concretecesk} shows the concrete CESK state space. \\
 
 \begin{figure}[h!]
 \begin{align*}
@@ -403,7 +392,6 @@ The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in B
 
 \item You can write multiple contracts for one function.
 \end{itemize}
-
 
 \subsection{Operation on Contracts (Abstract Values)}
 For our current work, users only provide the contracts for user defined functions, and our program will abstractly interpret all codes with the provided contracts as input abstract values.
