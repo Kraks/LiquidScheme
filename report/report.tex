@@ -68,7 +68,7 @@ But dynamic typing also makes program much easier to have bugs since programmer 
 (add1 "3")                ;Error
 \end{verbatim}
 
-Modern languages such as Racket, a dialect of Scheme provide a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satisfied these contracts or not in runtime(TODO: REF). The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
+Modern languages such as Racket, a dialect of Scheme, provides a way to ease this problem: programmers can write contract for function, then the language's contract system will check the argument and returned value is satisfied these contracts or not in runtime\citation{Findler:2002:CHF:581478.581484}. The contracts are just composed of ordinary functions in the language that return a boolean value, and the way of checking contract is to straightforwardly interpret these function with runtime value, if it returns \texttt{true} then it satisfies the contract, otherwise the contract system will properly blame somewhere violates the contract.
 
 Contract provides a way to describe refined behavior of a function, and programmers can utilize contract system and write test cases to syntactically cover the program to find bugs early, but the drawback is it may involve additional performance cost in runtime because contract checking happens on each function application.
 
@@ -76,17 +76,13 @@ The motivation of our project is we don't want to lose the advantages of dynamic
 
 \textbf{Approach}
 
-Our approach is based on abstracting abstract machine(TODO: REF), which is a technique that using abstract machine such as CESK machine (TODO: REF) to do abstract interpretation by transforming concrete semantics to abstract semantics. 
+Our approach is based on abstracting abstract machine\cite{VanHorn:2010:AAM:1863543.1863553}, which is a technique that using abstract machine such as CESK machine\cite{felleisen1986control} to do abstract interpretation by transforming concrete semantics to abstract semantics. 
 
 The key idea of our approach is regarding predicate (i.e. the contract) as abstract value. A predicate is an approximation of a value, it describes the bound of the value. We build an non-deterministic abstract interpreter that do computations on these abstract values, the term \textit{non-deterministic} means it will explore every possible behaviors of program's runtime. This approach based on abstract interpretation is sound, which means if the input of abstract interpretation is a sound approximation of concrete value, it's guaranteed that the result of abstract interpretation is still a sound approximation of returned concrete value. So that we could leverage abstract interpretation to check the behaviors of a function that depicted by contracts.
 
-Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK machine.
+Section 2 describes basic setting of the language, introduces the concrete semantics and abstract semantics for A-Normal Form lambda calculus on CESK machine. And section 3 shows the syntax of contract in our language, how to computes abstract values over abstract values, and how to verify contracts with runtime information obtained from the abstract interpreter. \\
 
-Section 3 TODO. 
-Section 4 TODO.
-Section 5 TODO. \\
-
-At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type(TODO: REF). It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch errors before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
+At last, I would like to explain the reason why we change the project name. At the very beginning, we propose our project as \textit{Extending Scheme with Liquid Type}, where Liquid Type is the abbreviation of \textit{Logically Qualified Data Types}. Liquid Type is a type system based on Hindley-Milner type with predicate abstraction and could infer the refinement part of a type\cite{Rondon:2008:LT:1375581.1375602}. It's a powerful type system that can help programmers to write pre-condition and post-condition of a function, and catch errors before running the program. But later, as we go further in this project, we realized that in such context of dynamic typing functional programming languages, \textit{contract} is a more precise and conventional term to describe the pre-conditions and post-conditions. And what we are doing is actually verifying these contracts statically, i.e. without really running the program. Yet, the techniques behind the title does not change.
 
 %----------------------------------------------------------------------------------------
 
@@ -98,7 +94,7 @@ In this section, we discuss the syntax and semantics of our core language. To fo
 
 \subsection{The Language}
 
-Our small-step abstract interpreter use a small language which is a variant of call-by-value \textit{A-Normal Form} lambda calculus(TODO: REF). Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form(TODO: REF).
+Our small-step abstract interpreter use a small language which is a variant of call-by-value \textit{A-Normal Form} lambda calculus\cite{Flanagan:1993:ECC:155090.155113}. Traditionally A-Normal Form used is an intermediate representation of functional program as an alternative choice of Continuation-Passing Style (CPS) in compiler, it has several settings to simplify compiler as well as interpreter for our project, and more importantly, it's much more human-readable compared with CPS form. Programs in direct style can be easily transformed into A-Normal Form\cite{Flanagan:1993:ECC:155090.155113}.
 
 The Figure \ref{fig:anf} shows the syntax of our tiny language.
 
@@ -150,7 +146,7 @@ Not surprisingly, we use \texttt{lambda} to form a function, and \textit{<label>
 
 \subsection{CESK Machine}
 
-This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine(TODO: REF) and its concrete semantics for our core language.
+This section we will introduce the Control, Environment, Store and Continuation (CESK) Machine\cite{felleisen1986control} and its concrete semantics for our core language.
 
 CESK machine as an abstract machine, is a formally defined tool for describing operational semantics of programming language. As we can see from its name, CESK machine has four components that compose a \textit{state} of its execution: \textbf{Control} is the current program expression, \textbf{Environment} is a map associates variable name with address, \textbf{Store} is a simulation of memory that maps from address to value, \textbf{Continuation} represents the program stack. Figure \ref{fig:concretecesk} shows the concrete CESK state space. \\
 
@@ -247,7 +243,7 @@ $$ \langle (\texttt{if}~\text{cond thn els}), \rho, \sigma, \kappa \rangle \long
 
 \subsection{Abstracting CESK Machine}
 
-In this section, we will derive a non-deterministic abstracting CESK machine for performing \textit{k}-CFA-like analysis(TODO: REF). There are several changes compared with concrete CESK machine: 
+In this section, we will derive a non-deterministic abstracting CESK machine for performing \textit{k}-CFA-like analysis\cite{VanHorn:2010:AAM:1863543.1863553}. There are several changes compared with concrete CESK machine: 
 
 \begin{itemize}
 \item the continuation is store-allocated for eliminating recursive sturcture in state space
@@ -343,7 +339,7 @@ Here we use a way as shown in Figure \ref{fig:transabs} that insert a new contin
 
 \section{Verifying Contracts}
 
-As we mentioned before, the key idea is take contracts as abstract values. In this part, we will describe the computation on these contracts and how to check these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
+As we mentioned before, the key idea is to take contracts as abstract values. In this part, we will describe the computation on these contracts and how to check these contracts. Contracts depict the boundaries of a value, and in our project, we define contract as \textit{a type tag with a set of predicates on value}.
 
 \subsection{The Syntax of Contract}
 The Figure \ref{figc} shows the syntax of our tiny sub-language of contract in BNF.
@@ -402,14 +398,14 @@ Cases with branches, when we don't know the exact value of pre-predicate, is a l
 
 
 \subsection{Checking Contracts}
-Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior(i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. To achieve this, we first check is the type tag are same, if not then reject it directly; otherwise, we check is the predicates of abstract value a subset of contract's predicates.
+Since a contract is type tag with a set of predicates, and we can obtain program's runtime behavior (i.e. the abstract value) from the abstract interpreter, so the contract checking are actually check is the runtime behavior a subset of user-defined contract. We say a concrete value satisfies a contract iff the type of them are same and all predicate on that value is true; and an abstract value satisfies a contract iff type of them are are same and the predicates of abstract value is a subset of contract's predicates. \\
 
 To checking the program's behaviors satisfies contract or not, we have two parts as following.
 
 \begin{itemize}
 \item Checking whether the user provided contracts and the actual behaviors of corresponding function are compatible, if not, the function should be rejected. E.g.: assume a given contract is \texttt{(: id ($\rightarrow$ Int Bool))} and a given function is \texttt{(lambda\ id\ (x)\ x)}, this function will be rejected.
 
-\item Checking whether every argument and returned value of function call satisfies its corresponding contracts. For an example as follows, an identity function \texttt{id}, from this definition, we can say that \texttt{id} is polymorphism with input and output have the same type (and value).
+\item Checking whether every argument and returned value of function call satisfy its corresponding contracts. For an example as follows, an identity function \texttt{id}, from this definition, we can say that \texttt{id} is polymorphism with input and output have the same type (and value).
 
 \begin{verbatim}
 (let ((id (lambda id (x) x)))
@@ -435,19 +431,26 @@ Store widening.
 
 %----------------------------------------------------------------------------------------
 
-\section{Examples}
-
-%----------------------------------------------------------------------------------------
-
 \section{Related Work}
+
 The term contracts mentioned in this report has a formal name called behavioral software contracts. This concept is connected with Bertrand Meyer's design of the Eiffel programming language, and it was first described in an articles of 1986 [Meyer, Bertrand: Design by Contract, Technical Report TR-EI-12/CO, Interactive Software Engineering Inc., 1986]: behavioral software contracts are assertions that govern the flow of values across component interfaces [Meyer 1988; 1991; 1992b].
 
-Contracts give strong guarantees about the interaction of components, while keeping the expressivity and flexibility of dynamic typing languages. However, as we mentioned in the motivation part, we can't ignore two downsides: (1) contracts are usually checked dynamically (only at run-time), and they can't help us discover bugs earlier like static type system; (2) the cost of monitoring contracts are expensive. [Higher-order symbolic execution for contract verification and refutation]
+Tobin-Hochstadt and Van Horn propose an approach to reasoning higher-order program by extending symbolic execution to use behavioral contracts as symbolic values\cite{Tobin-Hochstadt:2012:HSE:2384616.2384655}, and then could verify contracts statically and properly blame value which violate the contract. Their work is very similar with our method, but since in the early of project we are focusing on refinement until we realized our work is actually verifying contracts, so our work in the project are mostly independent.
 
 %----------------------------------------------------------------------------------------
 
-\section{Future Work}
+\section{Conclusion and Future Work}
+Our project utilize abstract interpretation and build an analyzer to analyze the runtime function call behaviors of dynamic typed programs, then could verify the program with user-defined contracts by checking the runtime abstract value and contract is compatible or not. As a tool it cloud help programmer catch bugs before running the program when using dynamic typing programming language. \\
 
-\section{Conclusion}
+The prototype verifier can correctly checking contract with primitve data type such as \texttt{Int} or \texttt{Bool}, but still we may improve the it in several aspects:
+\begin{itemize}
+\item Supporting verification for function type. To achieve this, we can check is a function type a subtype of another function type by contravariance.
+\item Supporting dependent contract which 
+\item Extending the language and its contract system to support more data types such as \texttt{list}, and support more primitive function such as \texttt{call/cc}.
+\end{itemize}
+
+\renewcommand\refname{Reference}
+\bibliographystyle{plain}
+\bibliography{ref}
 
 \end{document}
